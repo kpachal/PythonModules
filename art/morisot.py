@@ -3864,7 +3864,7 @@ class Morisot(object) :
     else :
       rightOfLegend = 0.90
     topOfLegend = topOfAll - (widthOfRow+0.05)*len(extraLegendLines)-0.03# 0.75
-    if luminosity != [] and CME != [] :
+    if luminosity != [] or CME != [] :
       topOfLegend = topOfLegend - 0.04 # was 0.09 
     bottomOfLegend = topOfLegend-(widthOfRow * len(observedlist))
 
@@ -3933,6 +3933,8 @@ class Morisot(object) :
 #      c.Update()
 #      persistent.append(self.drawLumi(leftOfAll,topOfAll-0.02-widthOfRow,lumInFb,0.04))
       persistent.append(self.drawCMEAndLumi(leftOfAll-0.08,topOfAll,CME,lumInFb,0.04))
+    elif CME != [] :
+      persistent.append(self.drawCME(leftOfAll,topOfAll,CME,0.04))
 
     if dodrawUsersText :
       self.drawUsersText(leftOfAll+0.01,topOfAll-0.05,"|y*| < 0.6",0.04)
