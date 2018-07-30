@@ -1,0 +1,23 @@
+==============================
+How to set up ATLAS style
+
+1) from your home directory ($HOME), make a directory called RootUtils
+2) cd RootUtils
+3) > git init 
+   > git clone ssh://git@gitlab.cern.ch:7999/atlas-publications-committee/atlasrootstyle.git .
+   After doing the above you should see a bunch of files directly inside your RootUtils directory. If instead you see another directory called atlasrootstyle/ move its contents to your current dir.
+4) In your directory you should now see a file called "dot.rootrc". Copy it to your $HOME directory and rename it ".rootrc" (that is, just get rid of the word "dot" at the front. Starting with an actual dot will make the file invisible when you ls but root can see it.)
+   > cp atlasrootstyle/dot.rootrc ${HOME}/.rootrc
+5) Add the following line to your .bashrc or whatever setup script you run when you log in. It is also in a simple one-line setup script in the sample code directory with this README file.
+   > export PYTHONPATH="${PYTHONPATH}:${HOME}/RootUtils/"
+
+=============================
+Make a pretty, ATLAS-style plot
+
+1) Come back to the directory where you left this README and the sample code.
+2) If you haven't added it to your .bashrc, or haven't logged in with a fresh shell after making that change, source setup.sh to add AtlasStyle to your python path.
+3) Run the plotting script:
+   > python plotting_example.py -b
+4) Admire the tidy plot produced
+5) Now you can use the techniques here in any plot you make -- just load ATLAS style, and as long as your python path includes RootUtils, you should get similar looking plots without too much fuss. You can also experiment by changing bits of the demo script or removing lines and seeing how it affects the plot.
+6) If in doubt, or something here doesn't work, feel free to email me! katherine.pachal@cern.ch
