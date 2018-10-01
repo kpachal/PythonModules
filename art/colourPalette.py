@@ -25,12 +25,47 @@ class ColourPalette(object) :
       self.setTealColours()
     elif self.palette == "Tropical" :
       self.setTropicalColours()
+    elif self.palette == "notSynthwave" : 
+      self.setnotSynthwaveColours()
 
   def getColourPalette(self) :
     return self.palette
 
   ## ----------------------------------------------------
   ## Individual palette definitions
+
+  def setnotSynthwaveColours(self) : 
+
+    # Plot fill colours         
+    self.oneFillColour = ROOT.TColor(500,72,145,220)
+    self.oneFitColour = ROOT.TColor(501,190,15,52)
+    self.statisticaTestFillColour = ROOT.TColor(502,158,206,235)
+    self.originalStatMarkerColour = ROOT.TColor(503,0,33,71)
+
+    self.fitLineColor = ROOT.kRed
+
+    # Limit-setting plots                   
+    self.oneSigmaBandColour = ROOT.kAzure+5
+    self.twoSigmaBandColour = ROOT.kAzure+5
+    self.signalLineColours = [ROOT.kAzure+4,ROOT.kAzure+3]
+    self.signalErrorColours = [2013,2013]
+
+
+    # Stat plots                                
+    self.statisticalTestFillColour = 2000
+    self.statisticalTestArrowColour = 2003
+    self.tomographyGraphColour = 2003
+
+    # Colours for lists
+    self.shortGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]  
+   
+    self.defaultGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]  
+
+    self.mediumGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]#+...
+
+    self.longGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1] #+...
+
+
 
   def setATLASColours(self) :
 
@@ -128,8 +163,10 @@ class ColourPalette(object) :
     self.tomographyGraphColour = 2003
 
     # Colours for lists
-    self.shortGoodColours = [2001,2002,2003]
-    self.defaultGoodColours = [2001,2000,2002,2003,2004] # Red fourth
+    #self.shortGoodColours = [2001,2002,2003]
+    self.shortGoodColours = [ROOT.kViolet+6,ROOT.kSpring-5,ROOT.kPink-1]
+    #self.defaultGoodColours = [2001,2000,2002,2003,2004] # Red fourth
+    self.defaultGoodColours = [ROOT.kViolet+6,ROOT.kAzure+1,ROOT.kSpring-5,ROOT.kPink-1,ROOT.kRed]
 #    self.defaultGoodColours = [1001,1000,1002,1004,1003]
     self.mediumGoodColours = [ROOT.kCyan+4,ROOT.kCyan+2,ROOT.kCyan,\
                               ROOT.kBlue,ROOT.kBlue+2,\
@@ -141,4 +178,5 @@ class ColourPalette(object) :
                      ROOT.kMagenta+4,ROOT.kMagenta+3,ROOT.kMagenta+2,ROOT.kMagenta+1,ROOT.kMagenta,\
                      ROOT.kRed,ROOT.kRed+1,ROOT.kRed+2,ROOT.kOrange+9,ROOT.kOrange+10,\
                      ROOT.kOrange+7,ROOT.kOrange,ROOT.kYellow,ROOT.kGreen-4,ROOT.kGreen-1,ROOT.kGreen+2,ROOT.kTeal]
-
+#    self.longGoodColours = [ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,\
+#                        ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue]
