@@ -1031,13 +1031,21 @@ class Morisot(object) :
       histogram.GetXaxis().SetRange(minX,maxX+5)
       histogram.GetYaxis().SetRangeUser(minY,maxY)
       histogram.GetYaxis().SetTitleSize(0.06)
-      histogram.GetYaxis().SetTitleOffset(1.2)
+      histogram.GetYaxis().SetTitleOffset(1.3) # 1.2
       histogram.GetYaxis().SetLabelSize(0.06)
       
       histogram.GetXaxis().SetTitleSize(0.06)
       histogram.GetXaxis().SetTitleOffset(1.2)
       histogram.GetXaxis().SetLabelSize(0.06)
       histogram.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
+      
+      # Try to tidy up ugly y axes
+      histogram.GetYaxis().SetNdivisions(605,ROOT.kTRUE)
+      # really ugly long numbers
+#      if abs(minY) < 0.011 and abs(maxY) < 0.011 :
+#        c.SetLeftMargin(0.2)
+#        histogram.GetYaxis().SetTitleOffset(1.3)
+      
       if (index==0) :
         histogram.GetXaxis().SetTitle(xname)
         histogram.GetYaxis().SetTitle(yname)
@@ -1550,8 +1558,8 @@ class Morisot(object) :
     else :
       self.drawATLASLabels(0.45, 0.87, True)
       self.drawCMEAndLumi(0.41,0.82,CME,lumInFb,0.04)
-      bottomOfLegend = 0.78 - widthOfRow*(2.0+float(doWindowLimits)+float(doBumpLimits))
-      legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.9,0.805,0.04)
+      bottomOfLegend = 0.80 - widthOfRow*(2.0+float(doWindowLimits)+float(doBumpLimits))
+      legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.9,0.80,0.04)
 
     c.Update()
 
