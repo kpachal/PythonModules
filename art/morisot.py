@@ -1615,6 +1615,7 @@ class Morisot(object) :
 
   def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,cutstring1,cutstring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0) :
 
+    # Make canvas
     canvasname = name+'_cv'
     outputname = name+epsorpdf
     EPSoutputname = name+'.eps'
@@ -1631,13 +1632,14 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
+    # Make pads
     # Dimensions: xlow, ylow, xup, yup
     outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
     pad1 = ROOT.TPad("pad1","pad1",0,0.4,1,1) # For main histo
     pad2 = ROOT.TPad("pad2","pad2",0,0.25,1,0.4) # For residuals histo
     pad3 = ROOT.TPad("pad2","pad2",0,0,1,0.25) # For residuals histo    
 
-    # Set up to draw in right orientations
+    # Set up pads to draw with right spacings
     outpad.SetFillStyle(4000) #transparent
     pad1.SetBottomMargin(0.00001)
     pad1.SetBorderMode(0)
@@ -1677,17 +1679,17 @@ class Morisot(object) :
     # Use colours from colour scheme. Need 4 of them.
     colours = self.getGoodColours(4)
 
-    fitHist.GetYaxis().SetTitleSize(0.052)
-    fitHist.GetYaxis().SetTitleOffset(1.0)
-    fitHist.GetYaxis().SetLabelSize(0.05)
-    print "first one i think"
-    self.drawDataHist(dataHist,lowbin,highbin,x,datay,False,2)
-    print "end of first one"
-
+    # Draw both data hists
+    dataHist.SetMarkerStyle(21)
+    dataHist.SetMarkerSize(0.9)
+    dataHist2.SetMarkerSize(0.9)
     self.drawDataHist(dataHist,lowbin,highbin,x,datay,True,3)   
     self.drawDataHist(dataHist2,lowbin2,highbin,x,datay,True,3)
+    
+    # Add signals
     self.drawDataHist(signal1,lowbin,highbin,x,datay,True,3)
     self.drawDataHist(signal2,lowbin2,highbin,x,datay,True,3)
+    # Update sig formatting
     signal2.SetMarkerStyle(24)
     signal2.SetMarkerColor(colours[1])
     signal2.SetLineColor(colours[1])
@@ -1695,14 +1697,12 @@ class Morisot(object) :
     signal1.SetMarkerSize(0.9)
     signal1.SetMarkerColor(colours[2])
     signal1.SetLineColor(colours[2])
-    dataHist.SetMarkerStyle(21)
-    dataHist.SetMarkerSize(0.9)
-    dataHist2.SetMarkerSize(0.9)
+    
+    # Draw fits
     self.drawFitHist(fitHist,lowbin,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[3],lineStyle=1)
     self.drawFitHist(fitHist2,lowbin2,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[0],lineStyle=1)
-    firstBinWithData,lastBinWithData = self.getAxisRangeFromHist(dataHist)
-    fitHist.GetYaxis().SetTitleSize(0.052)
-    fitHist.GetYaxis().SetTitleOffset(1)
+
+    # Update label formatting
     dataHist.GetYaxis().SetTitleFont(43)
     dataHist.GetYaxis().SetTitleSize(25)
     dataHist.GetYaxis().SetTitle("Events / Bin")
@@ -1710,16 +1710,31 @@ class Morisot(object) :
     dataHist.GetYaxis().SetLabelFont(43)
     dataHist.GetYaxis().SetLabelSize(25)
     
+    # Update axis range
     actualMin = 1E10
     actualMax = 0
     for bin in range(firstBin,lastBin+1) :
       if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
     dataHist.GetYaxis().SetRangeUser(max(0.7,actualMin/2.0),10*actualMax)
-    #dataHist.GetXaxis().SetMoreLogLabels(ROOT.kTRUE)
+
+    dataHist.GetXaxis().SetMoreLogLabels(ROOT.kTRUE)
 
     # Draw significance histogram
     pad2.cd()
+    self.drawSignificanceHist(significance2,firstBin,lastBin,"","",fixYAxis=True,inLargerPlot = True, doLogX=False, doErrors=False, fillColour = colours[0])
+    
+    # Update label formatting
+    significance2.GetYaxis().SetTitleFont(43)
+    significance2.GetYaxis().SetTitleSize(25)
+    significance2.GetYaxis().SetTitleOffset(1) # 1.2 = 20% larger
+    significance2.GetYaxis().SetLabelFont(43)
+    significance2.GetYaxis().SetLabelSize(25)
+
+    pad3.cd()
+    self.drawSignificanceHist(significance,firstBin,lastBin,x,"",fixYAxis=True,inLargerPlot = False, doLogX=False, doErrors=False, fillColour = colours[3])
+    
+    # Update label formatting
     significance.GetXaxis().SetNoExponent(1)
     significance.GetYaxis().SetTitleFont(43)
     significance.GetYaxis().SetTitleSize(25)
@@ -1730,32 +1745,9 @@ class Morisot(object) :
     significance.GetXaxis().SetLabelSize(25)
     significance.GetXaxis().SetTitleFont(43)
     significance.GetXaxis().SetTitleSize(25)
-    significance.GetXaxis().SetTitleOffset(4)
-    significance.GetYaxis().SetNdivisions(505)
+    significance.GetXaxis().SetTitleOffset(4) # 1.2
     
-    significance2.GetXaxis().SetNoExponent(1)
-    significance2.GetYaxis().SetTitleFont(43)
-   # significance2.GetYaxis().SetTitle("")
-    significance2.GetYaxis().SetTitleSize(25)
-    significance2.GetYaxis().SetTitleOffset(1) # 1.2 = 20% larger
-    significance2.GetYaxis().SetLabelFont(43)
-    significance2.GetYaxis().SetLabelSize(25)
-    significance2.GetXaxis().SetLabelFont(43)
-    significance2.GetXaxis().SetLabelSize(25)
-    significance2.GetXaxis().SetTitleFont(43)
-    significance2.GetXaxis().SetTitleSize(25)
-    significance2.GetXaxis().SetTitleOffset(3)
-    significance2.GetYaxis().SetNdivisions(505)
-
-    self.drawSignificanceHist(significance2,firstBin,lastBin,x,sigy,True)
-    significance2.GetYaxis().SetTitle("")
-    significance2.GetYaxis().SetNdivisions(505)
-    significance2.SetFillColor(colours[0])
-    pad3.cd()
-    self.drawSignificanceHist(significance,firstBin,lastBin,x,sigy,True)
-    #significance2.GetYaxis().SetTitle("")
-    significance.GetYaxis().SetTitle("")
-    significance.SetFillColor(colours[3])
+    # Redraw y axis label for significances
     outpad.cd()
     self.myLatex2.SetTextAngle(90)
     self.myLatex2.SetTextFont(43)    
@@ -1764,7 +1756,7 @@ class Morisot(object) :
 
     c.Update()
 
-    # in place of ROOT.TLine()
+    # Make a bunch of lines
     self.line.SetLineStyle(2)
     line1 = self.line.Clone("line1"); line1lims = []
     line2 = self.line.Clone("line2"); line2lims = []
@@ -1774,10 +1766,8 @@ class Morisot(object) :
     line6 = self.line.Clone("line6"); line2lims = []
     line7 = self.line.Clone("line7"); line3lims = []
     line8 = self.line.Clone("line8"); line4lims = []
-    line3faded = self.line.Clone("line3faded"); line3lims = []
-    line4faded = self.line.Clone("line4faded"); line4lims = []
-    helperline = self.line2.Clone("helperline"); helperlinelims = []
-#    self.line.SetLineColor(23)
+    line3_pad2 = self.line.Clone("line3_pad2"); line3lims = []
+    line4_pad2 = self.line.Clone("line4_pad2"); line4lims = []
     line1_2 = self.line.Clone("line1"); line1lims_2 = []
     line2_2 = self.line.Clone("line2"); line2lims_2 = []
     line3_2 = self.line.Clone("line3"); line3lims_2 = []
@@ -1787,8 +1777,7 @@ class Morisot(object) :
     line7_2 = self.line.Clone("line7"); line3lims_2 = []
     line8_2 = self.line.Clone("line8"); line4lims_2 = []
     
-#    line4_2.SetLineColor(4)
-
+    # Draw bump lines
     if doBumpLimits :
       heightLowEdge=0
       heightHighEdge=0
@@ -1823,14 +1812,12 @@ class Morisot(object) :
 
       lowYVal_2 = significance2.GetMinimum()#-0.2
       highYVal_2 = significance2.GetMaximum()#+0.2
-      print bumpLow2
-      print bumpLow
       line1lims_2 = [bumpLow2,0.5*minYvalue_2,bumpLow2,heightLowEdge_2]
       line2lims_2 = [bumpHigh2,0.5*minYvalue_2,bumpHigh2,heightHighEdge_2]
       line3lims_2 = [bumpLow2,lowYVal_2,bumpLow2,highYVal_2]
       line4lims_2 = [bumpHigh2,lowYVal_2,bumpHigh2,highYVal_2]      
 
-      # Draw blue lines
+      # Draw lines
       pad1.cd()
       line1.SetLineColor(colours[3])
       line1.SetX1(line1lims[0]); line1.SetY1(line1lims[1]); line1.SetX2(line1lims[2]); line1.SetY2(line1lims[3])
@@ -1839,12 +1826,12 @@ class Morisot(object) :
       line2.SetX1(line2lims[0]); line2.SetY1(line2lims[1]); line2.SetX2(line2lims[2]); line2.SetY2(line2lims[3])
       line2.Draw()
       pad2.cd()
-      line3faded.SetLineColor(colours[3])
-      line3faded.SetX1(line3lims[0]); line3faded.SetY1(line3lims[1]); line3faded.SetX2(line3lims[2]); line3faded.SetY2(line3lims[3])
-      line3faded.Draw()
-      line4faded.SetLineColor(colours[3])
-      line4faded.SetX1(line4lims[0]); line4faded.SetY1(line4lims[1]); line4faded.SetX2(line4lims[2]); line4faded.SetY2(line4lims[3])
-      line4faded.Draw()
+      line3_pad2.SetLineColor(colours[3])
+      line3_pad2.SetX1(line3lims[0]); line3_pad2.SetY1(line3lims[1]); line3_pad2.SetX2(line3lims[2]); line3_pad2.SetY2(line3lims[3])
+      line3_pad2.Draw()
+      line4_pad2.SetLineColor(colours[3])
+      line4_pad2.SetX1(line4lims[0]); line4_pad2.SetY1(line4lims[1]); line4_pad2.SetX2(line4lims[2]); line4_pad2.SetY2(line4lims[3])
+      line4_pad2.Draw()
       pad3.cd()
       line3.SetLineColor(colours[3])
       line3.SetX1(line3lims[0]); line3.SetY1(line3lims[1]); line3.SetX2(line3lims[2]); line3.SetY2(line3lims[3])
@@ -1852,10 +1839,6 @@ class Morisot(object) :
       line4.SetLineColor(colours[3])
       line4.SetX1(line4lims[0]); line4.SetY1(line4lims[1]); line4.SetX2(line4lims[2]); line4.SetY2(line4lims[3])
       line4.Draw()
-      helperline.SetLineColor(ROOT.kWhite)
-      helperline.SetLineWidth(20)
-      helperline.SetX1(helperlinelims[0]); helperline.SetY1(helperlinelims[1]); helperline.SetX2(helperlinelims[2]); helperline.SetY2(helperlinelims[3])
-      helperline.Draw()
       
       pad1.cd()
       line1_2.SetLineColor(colours[0])
@@ -1971,13 +1954,12 @@ class Morisot(object) :
     legend2.Draw()
     c.Update()
 
-    # Lydia adding observedStat value to plot
+    # Adding observedStat value to plot
     if self.dodrawUsersText:
       if doBumpLimits:
         if not writeOnpval:
           self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit qRange: "+str(FitMin)+" - "+str(FitMax)+" GeV}{"+"{0}}}".format(self.cutstring),0.033)
         else:
-          print ""
           self.drawUsersTextLeftAligned(0.14,0.62,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033) # This was the correct one
           self.drawUsersTextRightAligned(0.68,0.69,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033) # This was the correct one
 
@@ -1990,6 +1972,7 @@ class Morisot(object) :
     # Save.
     pad1.RedrawAxis()
     pad2.RedrawAxis()
+    pad3.RedrawAxis()
     c.RedrawAxis()
     c.Update()
     c.SaveAs(outputname)
@@ -2000,6 +1983,7 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
       c.SaveAs(EPSoutputname)
+
 
   def compareDataToLimit(self,dataHist,fitHist,significance,observedLimit,x,datay,sigy,name,luminosity,CME,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = False, pval = -999) :
 
@@ -2353,39 +2337,6 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
-    #padsize = 0.13
-    #topOfSubplots = 0.1 + padsize * 2
-    #for ipad in range(3) :
-    #  padname = "pad_{0}".format(ipad)
-    #  if ipad == 0 :
-    #    print "Main"
-    #    print topOfSubplots
-    #  elif ipad!= 2 :
-    #    print "Middle"
-    #    print topOfSubplots - ipad*padsize
-    #    print topOfSubplots - (ipad-1)*padsize
-    #  else :
-    #    print "Bottom"
-    #    print topOfSubplots - (ipad-1)*padsize
-
-    # Set up to draw in right orientations
-    #outpad.SetFillStyle(4000) #transparent
-    #for pad in pads :
-    #  pad.SetBorderMode(0)
-    #  pad.SetLogx(doLogX)
-    #  if pads.index(pad)==0 :
-    #    pad.SetBottomMargin(0.00001)
-    #    pad.SetLogy(1)
-    #    if (notLogY) :
-    #      pad.SetLogy(0)
-    #  elif pads.index(pad)==len(pads)-1 :
-    #    pad.SetTopMargin(0.00001)
-    #    pad.SetBottomMargin(0.1/(0.1+padsize))
-    #  else :
-    #    pad.SetTopMargin(0.00001)
-    #    pad.SetBottomMargin(0.00001)
-    #  pad.Draw()
-    #outpad.Draw()
     outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
     pad1 = ROOT.TPad("pad1","pad1",0,0.36,1,1) # For main histo
     pad2 = ROOT.TPad("pad2","pad2",0,0.23,1,0.36) # For residuals histo
@@ -5399,6 +5350,8 @@ class Morisot(object) :
     significance.GetYaxis().SetRangeUser(ylow,yhigh)
     if inLargerPlot :
       significance.GetYaxis().SetTickLength(0.055)
+    else :
+      significance.GetYaxis().SetTickLength(0.035)
     significance.GetXaxis().SetNdivisions(805,ROOT.kTRUE)
     significance.GetYaxis().SetNdivisions(805,ROOT.kTRUE)
 
@@ -5417,7 +5370,7 @@ class Morisot(object) :
     significance.Draw(drawOption)
 
     self.fixTheBloodyTickMarks(ROOT.gPad, significance, significance.GetBinLowEdge(firstBin), significance.GetBinLowEdge(lastBin+1),ylow,yhigh)
-
+    
   def drawSignificanceHistWithJESBands(self,significance,upsignificance,downsignificance,firstBin,lastBin,xname,yname,fixYAxis=False,\
         inLargerPlot=False,doLogX=False,doErrors=False) :
     #significance.SetMarkerColor(ROOT.kBlack)
