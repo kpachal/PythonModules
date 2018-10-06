@@ -1613,7 +1613,20 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
-  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,cutstring1,cutstring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0) :
+  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,cutstring1,cutstring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0) :
+  
+    # Options are for alternate versions of the plot.
+    # dataPointsOption:
+    # 0 = solid squares for longer data spectrum, open squares for its 1 signal,
+    #     solid circles for shorter spectrum, open circles for its 1 signal
+    # 1 = same shapes as 0 but points are colour coded to match their spectra
+    # 2 = all solid shapes for longer data spectrum, all open shapes for shorter one
+    
+    # fancinessOption:
+    # 0 = default: data, fit, one signal per spectrum
+    # 1 = least fancy: only data
+    # 2 = data + fit, no signals
+    # 3 = default with an extra signal per mass
 
     # Make canvas
     canvasname = name+'_cv'
@@ -1641,11 +1654,11 @@ class Morisot(object) :
 
     # Set up pads to draw with right spacings
     outpad.SetFillStyle(4000) #transparent
-    pad1.SetBottomMargin(0.00001)
     pad1.SetBorderMode(0)
     pad1.SetLogy(1)
     pad1.SetLogx(doLogX)
     pad1.SetLeftMargin(0.1)
+    pad1.SetBottomMargin(0.00001)
     pad2.SetLeftMargin(0.1)
     pad2.SetTopMargin(0.00001)
     pad2.SetBottomMargin(0.00001)
@@ -1680,27 +1693,44 @@ class Morisot(object) :
     colours = self.getGoodColours(4)
 
     # Draw both data hists
-    dataHist.SetMarkerStyle(21)
-    dataHist.SetMarkerSize(0.9)
-    dataHist2.SetMarkerSize(0.9)
-    self.drawDataHist(dataHist,lowbin,highbin,x,datay,True,3)   
+    self.drawDataHist(dataHist,lowbin,highbin,x,datay,True,3)
     self.drawDataHist(dataHist2,lowbin2,highbin,x,datay,True,3)
     
+    # Post hoc data plot formatting.
+    dataHist.SetMarkerSize(0.9)
+    dataHist2.SetMarkerSize(0.9)
+    if dataPointsOption == 0 :
+      dataHist.SetMarkerStyle(21)
+    elif dataPointsOption == 1 :
+      dataHist.SetMarkerStyle(21)
+      dataHist.SetMarkerColor(colours[3])
+      dataHist2.SetMarkerColor(colours[0])
+    elif dataPointsOption == 2 :
+      dataHist.SetMarkerStyle(25)
+    
     # Add signals
-    self.drawDataHist(signal1,lowbin,highbin,x,datay,True,3)
-    self.drawDataHist(signal2,lowbin2,highbin,x,datay,True,3)
+    if fancinessOption < 1 or fancinessOption > 2 :
+      self.drawDataHist(signal1,lowbin,highbin,x,datay,True,3)
+      self.drawDataHist(signal2,lowbin2,highbin,x,datay,True,3)
+
     # Update sig formatting
-    signal2.SetMarkerStyle(24)
+    if dataPointsOption == 2 :
+      signal2.SetMarkerStyle(20)
+    else :
+      signal2.SetMarkerStyle(24)
+    signal1.SetMarkerStyle(25)
+
     signal2.SetMarkerColor(colours[1])
     signal2.SetLineColor(colours[1])
-    signal1.SetMarkerStyle(25)
+    signal2.SetMarkerSize(0.9)
     signal1.SetMarkerSize(0.9)
     signal1.SetMarkerColor(colours[2])
     signal1.SetLineColor(colours[2])
     
     # Draw fits
-    self.drawFitHist(fitHist,lowbin,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[3],lineStyle=1)
-    self.drawFitHist(fitHist2,lowbin2,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[0],lineStyle=1)
+    if fancinessOption != 1 :
+      self.drawFitHist(fitHist,lowbin,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[3],lineStyle=1)
+      self.drawFitHist(fitHist2,lowbin2,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[0],lineStyle=1)
 
     # Update label formatting
     dataHist.GetYaxis().SetTitleFont(43)
