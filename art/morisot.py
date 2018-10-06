@@ -1718,11 +1718,12 @@ class Morisot(object) :
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
     dataHist.GetYaxis().SetRangeUser(max(0.7,actualMin/2.0),10*actualMax)
 
-    dataHist.GetXaxis().SetMoreLogLabels(ROOT.kTRUE)
+    dataHist.GetXaxis().SetMoreLogLabels()
+    #dataHist.GetXaxis().SetNdivisions(-888,ROOT.kTRUE)
 
     # Draw significance histogram
     pad2.cd()
-    self.drawSignificanceHist(significance2,firstBin,lastBin,"","",fixYAxis=True,inLargerPlot = True, doLogX=False, doErrors=False, fillColour = colours[0])
+    self.drawSignificanceHist(significance2,firstBin,lastBin,"","",fixYAxis=True,inLargerPlot = False, doLogX=False, doErrors=False, fillColour = colours[0])
     
     # Update label formatting
     significance2.GetYaxis().SetTitleFont(43)
@@ -1732,7 +1733,7 @@ class Morisot(object) :
     significance2.GetYaxis().SetLabelSize(25)
 
     pad3.cd()
-    self.drawSignificanceHist(significance,firstBin,lastBin,x,"",fixYAxis=True,inLargerPlot = False, doLogX=False, doErrors=False, fillColour = colours[3])
+    self.drawSignificanceHist(significance,firstBin,lastBin,x,"",fixYAxis=True,inLargerPlot = True, doLogX=False, doErrors=False, fillColour = colours[3])
     
     # Update label formatting
     significance.GetXaxis().SetNoExponent(1)
@@ -1743,9 +1744,13 @@ class Morisot(object) :
     significance.GetYaxis().SetLabelSize(25)
     significance.GetXaxis().SetLabelFont(43)
     significance.GetXaxis().SetLabelSize(25)
+    # TEMP FIXME
+    significance.GetXaxis().SetLabelSize(0)
     significance.GetXaxis().SetTitleFont(43)
     significance.GetXaxis().SetTitleSize(25)
     significance.GetXaxis().SetTitleOffset(4) # 1.2
+#    significance.GetXaxis().SetNdivisions(1200,ROOT.kTRUE)
+    significance.GetXaxis().SetNdivisions(802,ROOT.kTRUE)
     
     # Redraw y axis label for significances
     outpad.cd()
@@ -1973,6 +1978,10 @@ class Morisot(object) :
     pad1.RedrawAxis()
     pad2.RedrawAxis()
     pad3.RedrawAxis()
+
+    # Draw x axis labels that aren't a mess
+    self.fixTheBloodyLabels(pad2,significance,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17)
+    
     c.RedrawAxis()
     c.Update()
     c.SaveAs(outputname)
@@ -5352,6 +5361,7 @@ class Morisot(object) :
       significance.GetYaxis().SetTickLength(0.055)
     else :
       significance.GetYaxis().SetTickLength(0.035)
+    significance.GetXaxis().SetTickLength(0.08)
     significance.GetXaxis().SetNdivisions(805,ROOT.kTRUE)
     significance.GetYaxis().SetNdivisions(805,ROOT.kTRUE)
 
@@ -5711,14 +5721,14 @@ class Morisot(object) :
       lny = math.log(thisY1) + m*(x-thisX1)
     return math.exp(lny)
 
-  def fixTheBloodyTickMarks(self, pad, hist, x1, x2, y1, y2) :
+  def fixTheBloodyTickMarks(self, pad, hist, x1, x2, y1, y2, override = False) :
 
     if not pad.GetLogx() :
       return
 
     hist.GetXaxis().SetMoreLogLabels()
 
-    if x2/x1 > 100 or x2/x1 < 10:
+    if (x2/x1 > 100 or x2/x1 < 10) and not override :
       return
 
     tick = ROOT.TLine()
@@ -5762,6 +5772,8 @@ class Morisot(object) :
       startRange = xlow
       stopRange = xup
 
+    print startRange,stopRange
+
     for i in xrange(startRange, stopRange, 100) :
       if TeVScale :
         xx = float(i)/1000
@@ -5784,3 +5796,83 @@ class Morisot(object) :
           tick.DrawLine(xx, tickmaxy - (2*length if i%1000 == 0 else length), xx, tickmaxy)
 
     ROOT.gPad.Update()
+
+  def fixTheBloodyLabels(self,pad,significance,x1,x2,fontSize=0.04,nLabels=7) :
+
+    if not pad.GetLogx() :
+      return
+
+    # First point to mark will be first above x1
+    firstTick = self.roundUpOrderOfMagnitude(x1)
+
+    # Last will be last below x2
+    lastTick = self.roundDownOrderOfMagnitude(x2)
+
+    # Set of possible labels are spaced by order of magnitude.
+    possibleLabels = []
+    val = firstTick
+    for order in range(self.magnitude(firstTick),self.magnitude(lastTick)+1) :
+      order_list = []
+      for integer in range(1,10) :
+        possibleVal = integer * pow(10,order)
+        if possibleVal >= firstTick and possibleVal <= lastTick :
+          order_list.append(possibleVal)
+      possibleLabels.append(order_list)
+
+    # Optimal number of labels is about 7, unless otherwise specified.
+    # Take them off the top end of the lowest order of magnitude
+    # until there are more left at the next order up, then go there.
+    while self.countNestedList(possibleLabels) > nLabels :
+      for order in range(len(possibleLabels)-1) :
+        if len(possibleLabels[order]) > len(possibleLabels[order+1]) :
+          possibleLabels[order].pop()
+    finalLabels = [item for sublist in possibleLabels for item in sublist]
+
+    print "Chose",nLabels,"optimal labels:",finalLabels
+    
+    # Now decide where to put them and draw them on.
+    labelmaker = ROOT.TLatex()
+    labelmaker.SetTextColor(ROOT.kBlack)
+    labelmaker.SetTextFont(42)
+    labelmaker.SetTextSize(fontSize)
+    
+    ymin = pad.GetUymin()
+    ymax = pad.GetUymax()
+    ylocation = ymin - abs(float(ymax) - float(ymin))/6.0
+    # The following would turn it into [0,1] coordinates.
+    # I DON'T want that.
+    # labelmaker.SetNDC()
+    
+    for label in finalLabels :
+      labeltext = "{0}".format(label)
+      # Center horizontally and vertically around specified location
+      labelmaker.SetTextAlign(22)
+      labelmaker.DrawLatex(label,ylocation,labeltext)
+
+  def magnitude (self,value):
+    value = float(value)
+    if (value == 0): return 0
+    return int(math.floor(math.log10(abs(value))))
+
+  def roundUpOrderOfMagnitude(self, value) :
+    value = float(value)
+    magnitude = self.magnitude(value)
+    xhigh = int(math.ceil(value/pow(10,magnitude)))*pow(10,magnitude)
+    return xhigh
+
+  def roundDownOrderOfMagnitude(self,value) :
+    value = float(value)
+    magnitude = self.magnitude(value)
+    xlow = int(math.floor(value/pow(10,magnitude)))*pow(10,magnitude)
+    return xlow
+
+  def countNestedList(self,testlist) :
+    length = 0
+    for item in testlist :
+      if isinstance(item,list)  :
+        length = length+self.countNestedList(item)
+      else :
+        length = length+1
+    return length
+
+
