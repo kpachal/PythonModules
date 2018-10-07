@@ -1675,7 +1675,14 @@ class Morisot(object) :
     outpad.Draw()
 
     # Draw data and fit histograms
-    pad1.cd()
+    if fancinessOption !=1 :
+      pad1.cd()
+    else :
+      outpad.SetBorderMode(0)
+      outpad.SetLogy(1)
+      outpad.SetLogx(doLogX)
+      outpad.SetLeftMargin(0.1)
+      outpad.cd()
 
     # Get bin range for first spectrum
     lowbin,highbin = self.getAxisRangeFromHist(dataHist)
@@ -1732,13 +1739,15 @@ class Morisot(object) :
       self.drawFitHist(fitHist,lowbin,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[3],lineStyle=1)
       self.drawFitHist(fitHist2,lowbin2,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[0],lineStyle=1)
 
-    # Update label formatting
-    dataHist.GetYaxis().SetTitleFont(43)
-    dataHist.GetYaxis().SetTitleSize(25)
+      # Update label formatting
+      dataHist.GetYaxis().SetTitleFont(43)
+      dataHist.GetYaxis().SetTitleSize(25)
+      dataHist.GetYaxis().SetTitleOffset(1)
+      dataHist.GetYaxis().SetLabelFont(43)
+      dataHist.GetYaxis().SetLabelSize(25)
+      
     dataHist.GetYaxis().SetTitle("Events / Bin")
-    dataHist.GetYaxis().SetTitleOffset(1)
-    dataHist.GetYaxis().SetLabelFont(43)
-    dataHist.GetYaxis().SetLabelSize(25)
+    dataHist.GetXaxis().SetLabelSize(0)
     
     # Update axis range
     actualMin = 1E10
@@ -1749,7 +1758,28 @@ class Morisot(object) :
     dataHist.GetYaxis().SetRangeUser(max(0.7,actualMin/2.0),10*actualMax)
 
     dataHist.GetXaxis().SetMoreLogLabels()
-    #dataHist.GetXaxis().SetNdivisions(-888,ROOT.kTRUE)
+
+    # If we only want data, we're done now.
+    if fancinessOption == 1 :
+
+      # Draw x axis labels that aren't a mess
+      self.fixTheBloodyLabels(outpad,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.05,overrideY=0.13)
+      outpad.cd()
+    
+      c.RedrawAxis()
+      c.Update()
+      c.SaveAs(outputname)
+      if saveCfile:
+        c.SaveSource(Coutputname)
+      if saveRfile:
+        c.SaveSource(Routputname)
+      if saveEfile:
+        c.SaveAs(Eoutputname)
+        c.SaveAs(EPSoutputname)
+      
+      return
+      
+    # Otherwise, carry on and go to two-legend structure.
 
     # Draw significance histogram
     pad2.cd()
@@ -1774,18 +1804,17 @@ class Morisot(object) :
     significance.GetYaxis().SetLabelSize(25)
     significance.GetXaxis().SetLabelFont(43)
     significance.GetXaxis().SetLabelSize(25)
-    # TEMP FIXME
+    # This allows custom label formatting.
     significance.GetXaxis().SetLabelSize(0)
     significance.GetXaxis().SetTitleFont(43)
     significance.GetXaxis().SetTitleSize(25)
     significance.GetXaxis().SetTitleOffset(4) # 1.2
-#    significance.GetXaxis().SetNdivisions(1200,ROOT.kTRUE)
     significance.GetXaxis().SetNdivisions(802,ROOT.kTRUE)
     
     # Redraw y axis label for significances
     outpad.cd()
     self.myLatex2.SetTextAngle(90)
-    self.myLatex2.SetTextFont(43)    
+    self.myLatex2.SetTextFont(43)
     self.myLatex2.SetTextSize(24)
     self.myLatex2.DrawLatex(0.039, 0.155, "Significance")
 
@@ -1978,8 +2007,9 @@ class Morisot(object) :
       legend2.AddEntry(line4_2,"BumpHunter interval","L")
     if doWindowLimits :
       legend.AddEntry(line8,"Excluded window","L")
-    legend.AddEntry(signal1,"Z', #sigma x {0}".format(scale1))
-    legend2.AddEntry(signal2,"Z', #sigma x {0}".format(scale2))
+    if fancinessOption == 0 or fancinessOption == 3 :
+      legend.AddEntry(signal1,"Z', #sigma x {0}".format(scale1))
+      legend2.AddEntry(signal2,"Z', #sigma x {0}".format(scale2))
     helperHist = dataHist2.Clone()
     helperHist.SetMarkerColor(0)
     helperHist.SetLineColor(0)
@@ -2010,7 +2040,7 @@ class Morisot(object) :
     pad3.RedrawAxis()
 
     # Draw x axis labels that aren't a mess
-    self.fixTheBloodyLabels(pad2,significance,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17)
+    self.fixTheBloodyLabels(pad2,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17)
     
     c.RedrawAxis()
     c.Update()
@@ -5827,7 +5857,7 @@ class Morisot(object) :
 
     ROOT.gPad.Update()
 
-  def fixTheBloodyLabels(self,pad,significance,x1,x2,fontSize=0.04,nLabels=7) :
+  def fixTheBloodyLabels(self,pad,x1,x2,fontSize=0.04,nLabels=7,overrideY=0) :
 
     if not pad.GetLogx() :
       return
@@ -5865,19 +5895,40 @@ class Morisot(object) :
     labelmaker.SetTextColor(ROOT.kBlack)
     labelmaker.SetTextFont(42)
     labelmaker.SetTextSize(fontSize)
+    labelmaker.SetTextAlign(22)
     
     ymin = pad.GetUymin()
     ymax = pad.GetUymax()
-    ylocation = ymin - abs(float(ymax) - float(ymin))/6.0
-    # The following would turn it into [0,1] coordinates.
-    # I DON'T want that.
-    # labelmaker.SetNDC()
     
-    for label in finalLabels :
-      labeltext = "{0}".format(label)
-      # Center horizontally and vertically around specified location
-      labelmaker.SetTextAlign(22)
-      labelmaker.DrawLatex(label,ylocation,labeltext)
+    # If it's a log y axis, we need to go to a place
+    # which probably doesn't exist in user coordinates for this.
+    # We have to switch to pad coordinates, but also keep the
+    # x locations.
+    if pad.GetLogy() :
+      
+      ylocation = 0.7*pad.GetBottomMargin()
+      if overrideY :
+        ylocation = overrideY
+
+      # The following then sets the label text to turn it into [0,1] coordinates.
+      labelmaker.SetNDC()
+      # And overwrite the x locations.
+      for label in finalLabels :
+        xndc = self.convertXUserToNDC(pad,label,x1,x2)
+        labeltext = "{0}".format(label)
+        # Center horizontally and vertically around specified location
+        labelmaker.DrawLatex(xndc,ylocation,labeltext)
+
+    else :
+
+      ylocation = ymin - abs(float(ymax) - float(ymin))/6.0
+      if overrideY :
+        ylocation = overrideY
+    
+      for label in finalLabels :
+        labeltext = "{0}".format(label)
+        # Center horizontally and vertically around specified location
+        labelmaker.DrawLatex(label,ylocation,labeltext)
 
   def magnitude (self,value):
     value = float(value)
@@ -5905,4 +5956,20 @@ class Morisot(object) :
         length = length+1
     return length
 
+  def convertXUserToNDC(self,pad,val,minAxis,maxAxis) :
+
+    pad.Update() #this is necessary!
+
+    xpLeft = pad.GetLeftMargin()
+    xpRight = pad.GetRightMargin()
+
+    if pad.GetLogx() :
+      xPercentageAxis = (math.log(float(val))-math.log(minAxis))/(math.log(maxAxis)-math.log(minAxis))
+    else :
+      xPercentageAxis = (float(val)-minAxis)/(maxAxis-minAxis)
+
+    # Left margin + right margin + axis = 1.0
+    axisWidth = 1.0-xpLeft-xpRight
+    xndc = xpLeft + xPercentageAxis*axisWidth
+    return xndc
 
