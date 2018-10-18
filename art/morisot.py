@@ -89,6 +89,16 @@ class Morisot(object) :
     self.line2 = ROOT.TLine()
 
     self.labeltype = 2 # ATLAS internal
+    
+    self.labelDict = {
+      0 : "", # ATLAS public
+      1 : "Preliminary",
+      2 : "Internal",
+      3 : "Simulation Preliminary",
+      4 : "Simulation Internal",
+      5 : "Simulation",
+      6 : "Work in Progress"
+    }
 
 #    self.set2DPalette()
 
@@ -1028,7 +1038,7 @@ class Morisot(object) :
       histogram.SetLineWidth(2)
       histogram.SetFillStyle(0)
       histogram.SetTitle("")
-      histogram.GetXaxis().SetRange(minX,maxX+5)
+      histogram.GetXaxis().SetRange(minX,maxX)#+5)
       histogram.GetYaxis().SetRangeUser(minY,maxY)
       histogram.GetYaxis().SetTitleSize(0.06)
       histogram.GetYaxis().SetTitleOffset(1.3) # 1.2
@@ -1041,10 +1051,6 @@ class Morisot(object) :
       
       # Try to tidy up ugly y axes
       histogram.GetYaxis().SetNdivisions(605,ROOT.kTRUE)
-      # really ugly long numbers
-#      if abs(minY) < 0.011 and abs(maxY) < 0.011 :
-#        c.SetLeftMargin(0.2)
-#        histogram.GetYaxis().SetTitleOffset(1.3)
       
       if (index==0) :
         histogram.GetXaxis().SetTitle(xname)
@@ -1087,13 +1093,17 @@ class Morisot(object) :
           for line in extraLegendLines :
             toplocation = legendtop +0.02 + (0.01+0.04)*(index)
             if doLegendLocation == "Left" :
-              extralength = 0
+              self.myLatex.SetTextAlign(11)
+              xLocation = leftOfLegend+0.01
             else :
-              extralength = float(max(len(line) - 19,0)/35.0)
-            item = self.myLatex.DrawLatex(leftOfLegend+0.01-extralength,toplocation,line)
+              self.myLatex.SetTextAlign(31)
+              xLocation = 0.90
+            item = self.myLatex.DrawLatex(xLocation,toplocation,line)
             index = index+1
         legend.Draw()
 
+    # Fix latex
+    self.myLatex.SetTextAlign(11)
     if doATLASLabel == "Low" :
       if doLegendLow :
         self.drawATLASLabels(0.22,0.88,False,doRectangular)
@@ -1105,7 +1115,7 @@ class Morisot(object) :
       if doLegendLocation == "Left" :
         self.drawATLASLabels(0.2,0.88)
       else :
-        self.drawATLASLabels(0.53,0.88, True)
+        self.drawATLASLabels(0.90,0.88,True)
 
     if addHorizontalLines != [] :
       for val in addHorizontalLines :
@@ -5503,33 +5513,13 @@ class Morisot(object) :
   def drawATLASLabels(self,xstart,ystart,rightalign=False,isRectangular=False,fontSize=0.05) :
     if self.labeltype < 0 :
       return
+    # If we have set "rightalign" = true, we will take the x location as the right side of the label.
     self.myLatex.SetTextSize(fontSize)
-    self.myLatex.SetTextFont(72)
-    # Defined with respect to "preliminary"
-    extralength = {0:0, 1: 0, 2: -0.07, 3: 0.25, 4: 0.23, 5: -0.1, 6 : 0.12}
+    string = "#font[72]{0} #font[42]{1}".format("{ATLAS}","{"+self.labelDict[self.labeltype]+"}")
     if rightalign :
-      xstart = xstart - extralength[self.labeltype]
-    self.myLatex.DrawLatex(xstart, ystart, "ATLAS")
-    if self.labeltype==0 :
-      return
-    spacing = 0.17*(fontSize/0.05)
-    if (isRectangular) :
-      #spacing = 0.12*(fontSize/0.05)
-      spacing = 0.14*(fontSize/0.05)
-    self.myLatex.SetTextFont(42)
-    if self.labeltype==1 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Preliminary")
-    elif self.labeltype==2 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Internal")
-    elif self.labeltype==3 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation Preliminary")
-    elif self.labeltype==4 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation Internal")
-    elif self.labeltype==5 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation")
-    elif self.labeltype==6 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Work in Progress")
-    return
+      self.myLatex.SetTextAlign(31)
+    self.myLatex.DrawLatex(xstart, ystart, string)
+    self.myLatex.SetTextAlign(11)
 
   # Text height required is around 0.04 for size 0.04, 0.05 for size 0.05, etc
 
