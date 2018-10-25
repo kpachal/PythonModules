@@ -1623,7 +1623,7 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
-  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,cutstring1,cutstring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0) :
+  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0) :
   
     # Options are for alternate versions of the plot.
     # dataPointsOption:
@@ -1683,6 +1683,14 @@ class Morisot(object) :
     pad2.Draw()
     pad3.Draw()
     outpad.Draw()
+    
+    # Define a few common items
+    leftOfLegend1 = 0.13
+    widthOfRow = 0.04
+    lumInFb1 = round(float(lumi1)/float(1000),nsigfigs)
+    lumInFb2 = round(float(lumi2)/float(1000),nsigfigs)
+    atlasLabelXLocation = 0.137
+    atlasLabelYLocation = 0.92
 
     # Draw data and fit histograms
     if fancinessOption !=1 :
@@ -1765,7 +1773,8 @@ class Morisot(object) :
     for bin in range(firstBin,lastBin+1) :
       if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
-    dataHist.GetYaxis().SetRangeUser(max(0.7,actualMin/2.0),10*actualMax)
+    minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
+    dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax)
 
     dataHist.GetXaxis().SetMoreLogLabels()
 
@@ -1775,6 +1784,36 @@ class Morisot(object) :
       # Draw x axis labels that aren't a mess
       self.fixTheBloodyLabels(outpad,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.05,overrideY=0.13)
       outpad.cd()
+    
+      # Do ATLAS and channel labels
+      atlasLabelYLocation = 0.88 # Looks squashed with same dimensions as other plot
+      self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
+
+      self.myLatex.SetTextFont(42)
+      self.myLatex.SetTextSize(0.04)
+      index = 0
+      persistent = []
+      if len(extraLegendLines) > 0 :
+        for line in extraLegendLines :
+          toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)-0.02
+          persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
+          index = index+1
+    
+      # Do legend: only one for this plot
+      legend = self.makeLegend(0.14,0.2,0.4,0.35,fontSize = 0.04*0.93)
+      if datastring1 :
+        thisline = "Data, {0} fb^{1}, {2}".format(lumInFb1,"{-1}",datastring1)
+      else :
+        thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")
+      legend.AddEntry(dataHist,thisline,"LFP")
+
+      if datastring2 :
+        thisline2 = "Data, {0} fb^{1}, {2}".format(lumInFb2,"{-1}",datastring2)
+      else :
+        thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
+      legend.AddEntry(dataHist2,thisline2,"LFP")
+      legend.Draw()
+      c.Update()
     
       c.RedrawAxis()
       c.Update()
@@ -1969,44 +2008,42 @@ class Morisot(object) :
       line8.Draw()
 
     c.Update()
-
     outpad.cd()
-    leftOfLegend = 0.14
-    widthOfRow = 0.04
-    lumInFb1 = round(float(lumi1)/float(1000),nsigfigs)
-    lumInFb2 = round(float(lumi2)/float(1000),nsigfigs)
-    
-    self.drawATLASLabels(0.135, 0.92, isRectangular = True)
-    bottomOfLegend = 0.485 - 0.07*(float(doWindowLimits)+float(doBumpLimits))
-    legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.4,0.59,fontSize = 0.04*0.93)
-    legend2 = self.makeLegend(0.56,0.77,0.84,0.95,fontSize = 0.04*0.93)
 
-    c.Update()
-
+    # ATLAS labels and lines near them
+    self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
     self.myLatex.SetTextFont(42)
     self.myLatex.SetTextSize(0.04)
     index = 0
     persistent = []
-    toplocation = bottomOfLegend
     if len(extraLegendLines) > 0 :
-
       for line in extraLegendLines :
-        toplocation = bottomOfLegend - (widthOfRow)*(index+1)
-        persistent.append(self.myLatex.DrawLatex(leftOfLegend+0.01,toplocation,line))
+        toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)
+        persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
         index = index+1
 
-    # Go to outer pad to fill and draw legend
+    # Legends with appropriate dimensions
+    bottomOfLegend1 = 0.415
+    topOfLegend2 = 0.95
+    depthOfLegend = min(0.04*(2+(2 if (fancinessOption!=1 and fancinessOption!=2) else 0)),0.1) # data, fit, any signal
+    depthOfLegend = depthOfLegend + 0.07*(float(doWindowLimits)+float(doBumpLimits)) # window and bump limits
+    topOfLegend1 = bottomOfLegend1 + depthOfLegend
+    bottomOfLegend2 = topOfLegend2 - depthOfLegend
+    legend = self.makeLegend(leftOfLegend1,bottomOfLegend1,0.4,topOfLegend1,fontSize = 0.04*0.93)
+    legend2 = self.makeLegend(0.56,bottomOfLegend2,0.84,topOfLegend2,fontSize = 0.04*0.93)
+
+    c.Update()
+
     # Create legend
-    outpad.cd()
-    if cutstring1 :
-      thisline = "Data, {0} fb^{1}, |y*| < {2}".format(lumInFb1,"{-1}",cutstring1)
+    if datastring1 :
+      thisline = "Data, {0} fb^{1}, {2}".format(lumInFb1,"{-1}",datastring1)
     else :
       thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")
     legend.AddEntry(dataHist,thisline,"LFP")
     legend.AddEntry(fitHist,"Background fit","LF")
 
-    if cutstring2 :
-      thisline2 = "Data, {0} fb^{1}, |y*| < {2}".format(lumInFb2,"{-1}",cutstring2)
+    if datastring2 :
+      thisline2 = "Data, {0} fb^{1}, {2}".format(lumInFb2,"{-1}",datastring2)
     else :
       thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
     legend2.AddEntry(dataHist2,thisline2,"LFP")
@@ -2020,29 +2057,21 @@ class Morisot(object) :
     if fancinessOption == 0 or fancinessOption == 3 :
       legend.AddEntry(signal1,"Z', #sigma x {0}".format(scale1))
       legend2.AddEntry(signal2,"Z', #sigma x {0}".format(scale2))
-    helperHist = dataHist2.Clone()
-    helperHist.SetMarkerColor(0)
-    helperHist.SetLineColor(0)
-    legend.AddEntry(helperHist,"m_{Z'} = 250 GeV, g_{q} = 0.1","LFP")
-    legend2.AddEntry(helperHist,"m_{Z'} = 550 GeV, g_{q} = 0.1","LFP")
+      helperHist = dataHist2.Clone()
+      helperHist.SetMarkerColor(0)
+      helperHist.SetLineColor(0)
+      legend.AddEntry(helperHist,"m_{Z'} = 250 GeV, g_{q} = 0.1","LFP")
+      legend2.AddEntry(helperHist,"m_{Z'} = 550 GeV, g_{q} = 0.1","LFP")
     legend.Draw()
     legend2.Draw()
     c.Update()
 
-    # Adding observedStat value to plot
+    # Adding p-values to plot:
+    # want them adjascent to legends
     if self.dodrawUsersText:
       if doBumpLimits:
-        if not writeOnpval:
-          self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit qRange: "+str(FitMin)+" - "+str(FitMax)+" GeV}{"+"{0}}}".format(self.cutstring),0.033)
-        else:
-          self.drawUsersTextLeftAligned(0.14,0.62,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033) # This was the correct one
-          self.drawUsersTextRightAligned(0.68,0.69,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033) # This was the correct one
-
-      else:
-        if not writeOnpval:
-          self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}".format(self.cutstring),0.033)
-        else:
-          self.drawUsersText(0.56,0.7,"#splitline{#it{p}-value = "+str(round(pval,2))+"}{#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}}".format(self.cutstring),0.04)
+        self.drawUsersTextLeftAligned(leftOfLegend1,topOfLegend1+0.02,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033)
+        self.drawUsersTextRightAligned(0.68,bottomOfLegend2-0.08,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033)
 
     # Save.
     pad1.RedrawAxis()
