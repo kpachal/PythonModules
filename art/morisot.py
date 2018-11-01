@@ -1623,7 +1623,7 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
-  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0) :
+  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0,extraSpace=False) :
   
     # Options are for alternate versions of the plot.
     # dataPointsOption:
@@ -1774,7 +1774,10 @@ class Morisot(object) :
       if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
     minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
-    dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax)
+    if extraSpace :
+      dataHist.GetYaxis().SetRangeUser(minYaxis,16*actualMax) # was 10
+    else :
+      dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax) # was 10
 
     dataHist.GetXaxis().SetMoreLogLabels()
 
@@ -1787,15 +1790,16 @@ class Morisot(object) :
     
       # Do ATLAS and channel labels
       atlasLabelYLocation = 0.88 # Looks squashed with same dimensions as other plot
+      persistent = []      
+      persistent.append(self.drawCME(atlasLabelXLocation,atlasLabelYLocation - 0.045,CME,0.04))
       self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
 
       self.myLatex.SetTextFont(42)
       self.myLatex.SetTextSize(0.04)
       index = 0
-      persistent = []
       if len(extraLegendLines) > 0 :
         for line in extraLegendLines :
-          toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)-0.02
+          toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)-0.02 - 0.045
           persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
           index = index+1
     
@@ -2011,14 +2015,15 @@ class Morisot(object) :
     outpad.cd()
 
     # ATLAS labels and lines near them
+    persistent = []
+    persistent.append(self.drawCME(atlasLabelXLocation,atlasLabelYLocation - 0.045,CME,0.04))
     self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
     self.myLatex.SetTextFont(42)
     self.myLatex.SetTextSize(0.04)
     index = 0
-    persistent = []
     if len(extraLegendLines) > 0 :
       for line in extraLegendLines :
-        toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)
+        toplocation = atlasLabelYLocation - (widthOfRow)*(index+1) - 0.045
         persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
         index = index+1
 
