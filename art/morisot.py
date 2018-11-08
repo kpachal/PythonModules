@@ -887,8 +887,9 @@ class Morisot(object) :
       c.SaveAs(Eoutputname)
 
 
-  def drawManyOverlaidHistograms(self,histograms,names,xname,yname,name,xmin,xmax,ymin,ymax,extraLegendLines = [],doLogX=False,doLogY=True,doErrors=False,doRectangular=False,doLegend=True,doLegendLow=True,doLegendLocation="Left",doLegendOutsidePlot=False,doATLASLabel="Low",pairNeighbouringLines=False,dotLines = [],addHorizontalLines=[]) :
+  def drawManyOverlaidHistograms(self,histograms,names,xname,yname,name,xmin,xmax,ymin,ymax,extraLegendLines = [],doLogX=False,doLogY=True,doErrors=False,doRectangular=False,doLegend=True,doLegendLow=True,doLegendLocation="Left",doLegendOutsidePlot=False,doATLASLabel="Low",doCME=None,pairNeighbouringLines=False,dotLines = [],addHorizontalLines=[]) :
     # Left, Right, or Wide
+    persistent = []
 
     canvasname = name+'_cv'
     outputname = name+epsorpdf
@@ -985,8 +986,10 @@ class Morisot(object) :
         legendbottom = 0.20
         legendtop = legendbottom + legendsize
       else :
-        legendtop = 0.90 - (0.05)*len(extraLegendLines)
+        legendtop = 0.90 - (0.04)*len(extraLegendLines)
         if doATLASLabel != "Low" and doATLASLabel != "None":
+          legendtop = legendtop - 0.05
+        if doCME :
           legendtop = legendtop - 0.05
         legendbottom = legendtop - legendsize
       if doLegendLocation == "Left" :
@@ -1076,9 +1079,11 @@ class Morisot(object) :
 
       if doLegendOutsidePlot :
         index = 0
-        if len(extraLegendLines) > 0 :
+        if len(extraLegendLines) > 0 :         
           for item in range(len(extraLegendLines)) :
             toplocation = legendtop +0.02 + (0.01+0.05)*(index)
+            if doCME :
+              toplocation = toplocation-0.05
             item = self.myLatex.DrawLatex(leftOfLegend+0.02,toplocation,extraLegendLines[index])
             index = index+1
         pad2.cd()
@@ -1090,8 +1095,9 @@ class Morisot(object) :
       else :
         index = 0
         if len(extraLegendLines) > 0 :
+          self.myLatex.SetTextSize(0.04)           
           for line in extraLegendLines :
-            toplocation = legendtop +0.02 + (0.01+0.04)*(index)
+            toplocation = legendtop +0.02 + (0.04)*(index)
             if doLegendLocation == "Left" :
               self.myLatex.SetTextAlign(11)
               xLocation = leftOfLegend+0.01
@@ -1102,20 +1108,26 @@ class Morisot(object) :
             index = index+1
         legend.Draw()
 
-    # Fix latex
-    self.myLatex.SetTextAlign(11)
     if doATLASLabel == "Low" :
       if doLegendLow :
-        self.drawATLASLabels(0.22,0.88,False,doRectangular)
+        persistent.append(self.drawATLASLabels(0.22,0.88,False,doRectangular))
+        if doCME : 
+          persistent.append(self.drawCME(0.22,0.83,doCME,0.05))
       else :
-        self.drawATLASLabels(0.2, 0.2,False,doRectangular)
+        persistent.append(self.drawATLASLabels(0.2, 0.25,False,doRectangular))
+        if doCME :
+          persistent.append(self.drawCME(0.2,0.2,doCME,0.05))
     elif doATLASLabel == "None" :
       pass
     else :
       if doLegendLocation == "Left" :
-        self.drawATLASLabels(0.2,0.88)
+        persistent.append(self.drawATLASLabels(0.2,0.88))
+        if doCME : 
+          persistent.append(self.drawCME(0.2,0.83,doCME,0.05))
       else :
-        self.drawATLASLabels(0.90,0.88,True)
+        persistent.append(self.drawATLASLabels(0.90,0.88,True))
+        if doCME: 
+          persistent.append(self.drawCME(0.90,0.83,doCME,0.05,True))
 
     if addHorizontalLines != [] :
       for val in addHorizontalLines :
@@ -1625,6 +1637,7 @@ class Morisot(object) :
 
   def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0,extraSpace=False) :
   
+
     # Options are for alternate versions of the plot.
     # dataPointsOption:
     # 0 = solid squares for longer data spectrum, open squares for its 1 signal,
@@ -1775,7 +1788,7 @@ class Morisot(object) :
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
     minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
     if extraSpace :
-      dataHist.GetYaxis().SetRangeUser(minYaxis,16*actualMax) # was 10
+      dataHist.GetYaxis().SetRangeUser(minYaxis,20*actualMax) # was 10
     else :
       dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax) # was 10
 
@@ -5576,17 +5589,30 @@ class Morisot(object) :
     persistent = self.whitebox.DrawClone()
     return persistent
 
-  def drawCME(self,xstart,ystart,CME,fontsize=0.05) :
-    self.whitebox.Clear()
-    self.whitebox.SetTextSize(fontsize)
-    self.whitebox.SetX1NDC(xstart-0.01)
-    self.whitebox.SetY1NDC(ystart-0.01)
-    self.whitebox.SetX2NDC(xstart+0.25)
-    self.whitebox.SetY2NDC(ystart+0.05)
+  def drawCME(self,xstart,ystart,CME,fontsize=0.05,rightalign=False) :
+    #self.whitebox.Clear()
+    #if rightalign :
+    #  self.whitebox.SetTextAlign(31)    
+    #self.whitebox.SetTextSize(fontsize)
+    #self.whitebox.SetX1NDC(xstart-0.01)
+    #self.whitebox.SetY1NDC(ystart-0.01)
+    #self.whitebox.SetX2NDC(xstart+0.25)
+    #self.whitebox.SetY2NDC(ystart+0.05)
     mysqrt = "#sqrt{s}"
-    self.whitebox.AddText(0.04,1.0/6.0,"{0}={1} TeV".format(mysqrt,CME))
-    persistent = self.whitebox.DrawClone()
-    return persistent
+    #self.whitebox.AddText(0.04,1.0/6.0,"{0}={1} TeV".format(mysqrt,CME))
+    #persistent = self.whitebox.DrawClone()
+    #self.whitebox.SetTextAlign(11)
+    #return persistent
+    persistent = ROOT.TLatex()
+    persistent.SetTextColor(ROOT.kBlack)
+    persistent.SetNDC()
+    persistent.SetTextSize(fontsize)
+    string = "{0}={1} TeV".format(mysqrt,CME)
+    if rightalign :
+      persistent.SetTextAlign(31)
+    persistent.DrawLatex(xstart, ystart, string)
+    persistent.SetTextAlign(11)
+    return 1
 
   def drawLumiAndCMEVert(self,xstart,ystart,lumiInFb,CME,fontsize=0.05) :
     if lumiInFb < 0 and CME < 0 :
