@@ -788,8 +788,9 @@ class Morisot(object) :
     lumiInFb = round(float(luminosity)/float(1000),nsigfigs)
     if (doLabels) :
       if legendsize > 0 and doLogX and not doLegTopRight:
-        self.drawCMEAndLumi(0.47,0.81,CME,lumiInFb,0.04)
-        self.drawATLASLabels(0.48, 0.87, True)
+        self.drawATLASLabels(0.55, 0.88, False, True)
+        self.drawCMEAndLumi(0.55,0.83,CME,lumiInFb,0.04)
+
       else :
         self.drawATLASLabels(0.2, 0.2)
         self.drawLumiAndCMEVert(0.22,0.28,lumiInFb,CME,0.04)
@@ -1753,13 +1754,17 @@ class Morisot(object) :
 
     # Update sig formatting
     if dataPointsOption == 2 :
-      signal2.SetMarkerStyle(20)
+#      signal2.SetMarkerStyle(20)
+       signal2.SetMarkerStyle(23)
     else :
       signal2.SetMarkerStyle(24)
-    signal1.SetMarkerStyle(25)
+#    signal1.SetMarkerStyle(25)
+    signal1.SetMarkerStyle(32)
 
     signal2.SetMarkerColor(colours[1])
     signal2.SetLineColor(colours[1])
+#    signal2.SetMarkerColor(ROOT.kBlue-3)
+#    signal2.SetLineColor(ROOT.kBlue-3)
     signal2.SetMarkerSize(0.9)
     signal1.SetMarkerSize(0.9)
     signal1.SetMarkerColor(colours[2])
@@ -1786,7 +1791,13 @@ class Morisot(object) :
     for bin in range(firstBin,lastBin+1) :
       if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
       elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
-    minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
+    if actualMin < 1.5 :
+      minYaxis = 0.7
+    elif actualMin < 2.5 :
+      minYaxis = 1.3
+    else :
+      minYaxis = float(actualMin)/2.0
+    #minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
     if extraSpace :
       dataHist.GetYaxis().SetRangeUser(minYaxis,20*actualMax) # was 10
     else :
@@ -1817,9 +1828,10 @@ class Morisot(object) :
           index = index+1
     
       # Do legend: only one for this plot
+      # No need to split lines as there is plenty of whitespace
       legend = self.makeLegend(0.14,0.2,0.4,0.35,fontSize = 0.04*0.93)
       if datastring1 :
-        thisline = "Data, {0} fb^{1}, {2}".format(lumInFb1,"{-1}",datastring1)
+        thisline = "Data, {0} fb^{1}, ".format(lumInFb1,"{-1}")+datastring1
       else :
         thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")
       legend.AddEntry(dataHist,thisline,"LFP")
@@ -2045,6 +2057,7 @@ class Morisot(object) :
     topOfLegend2 = 0.95
     depthOfLegend = min(0.04*(2+(2 if (fancinessOption!=1 and fancinessOption!=2) else 0)),0.1) # data, fit, any signal
     depthOfLegend = depthOfLegend + 0.07*(float(doWindowLimits)+float(doBumpLimits)) # window and bump limits
+    if (datastring1 or datastring2) : depthOfLegend = depthOfLegend + 0.04
     topOfLegend1 = bottomOfLegend1 + depthOfLegend
     bottomOfLegend2 = topOfLegend2 - depthOfLegend
     legend = self.makeLegend(leftOfLegend1,bottomOfLegend1,0.4,topOfLegend1,fontSize = 0.04*0.93)
@@ -2052,19 +2065,29 @@ class Morisot(object) :
 
     c.Update()
 
-    # Create legend
+    # Create legends
+
+    # For various blank lines:
+    helperHist = dataHist.Clone()
+    helperHist.SetMarkerColor(0)
+    helperHist.SetLineColor(0)    
+
+    thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")    
     if datastring1 :
-      thisline = "Data, {0} fb^{1}, {2}".format(lumInFb1,"{-1}",datastring1)
-    else :
-      thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")
+      thisline = thisline+","
     legend.AddEntry(dataHist,thisline,"LFP")
+    if datastring1 :
+      legend.AddEntry(helperHist,datastring1,"LFP")
+
     legend.AddEntry(fitHist,"Background fit","LF")
 
+    thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
     if datastring2 :
-      thisline2 = "Data, {0} fb^{1}, {2}".format(lumInFb2,"{-1}",datastring2)
-    else :
-      thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
+      thisline2 = thisline2+","
     legend2.AddEntry(dataHist2,thisline2,"LFP")
+    if datastring2 :
+      legend2.AddEntry(helperHist,datastring2,"LFP")
+
     legend2.AddEntry(fitHist2,"Background fit","LF")
 
     if doBumpLimits :
@@ -2075,9 +2098,6 @@ class Morisot(object) :
     if fancinessOption == 0 or fancinessOption == 3 :
       legend.AddEntry(signal1,"Z', #sigma x {0}".format(scale1))
       legend2.AddEntry(signal2,"Z', #sigma x {0}".format(scale2))
-      helperHist = dataHist2.Clone()
-      helperHist.SetMarkerColor(0)
-      helperHist.SetLineColor(0)
       legend.AddEntry(helperHist,"m_{Z'} = 250 GeV, g_{q} = 0.1","LFP")
       legend2.AddEntry(helperHist,"m_{Z'} = 550 GeV, g_{q} = 0.1","LFP")
     legend.Draw()
@@ -5511,9 +5531,6 @@ class Morisot(object) :
     significance.GetYaxis().SetRangeUser(ylow,yhigh)
     upsignificance.GetYaxis().SetRangeUser(ylow,yhigh)
     downsignificance.GetYaxis().SetRangeUser(ylow,yhigh)
-    #significance.GetYaxis().SetNdivisions(5,10,0)
-    #upsignificance.GetYaxis().SetNdivisions(5,10,0)
-    #downsignificance.GetYaxis().SetNdivisions(5,10,0)
     significance.GetYaxis().SetNdivisions(604)
     upsignificance.GetYaxis().SetNdivisions(604)
     downsignificance.GetYaxis().SetNdivisions(604)
@@ -5563,6 +5580,7 @@ class Morisot(object) :
     # If we have set "rightalign" = true, we will take the x location as the right side of the label.
     self.myLatex.SetTextSize(fontSize)
     string = "#font[72]{0} #font[42]{1}".format("{ATLAS}","{"+self.labelDict[self.labeltype]+"}")
+    self.myLatex.SetTextAlign(11)
     if rightalign :
       self.myLatex.SetTextAlign(31)
     self.myLatex.DrawLatex(xstart, ystart, string)
@@ -5581,7 +5599,6 @@ class Morisot(object) :
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
     mypb = "pb^{-1}"
-    #self.whitebox.AddText(0.04,1.0/8.0,"{0} = {1} {2}".format(mystring,lumiInFb,myfb))
     if doLumiInPb:
       self.whitebox.AddText(0.04,1.0/8.0,"{0} {1}".format(int(lumiInFb*1000),mypb))
     else:
@@ -5590,19 +5607,7 @@ class Morisot(object) :
     return persistent
 
   def drawCME(self,xstart,ystart,CME,fontsize=0.05,rightalign=False) :
-    #self.whitebox.Clear()
-    #if rightalign :
-    #  self.whitebox.SetTextAlign(31)    
-    #self.whitebox.SetTextSize(fontsize)
-    #self.whitebox.SetX1NDC(xstart-0.01)
-    #self.whitebox.SetY1NDC(ystart-0.01)
-    #self.whitebox.SetX2NDC(xstart+0.25)
-    #self.whitebox.SetY2NDC(ystart+0.05)
     mysqrt = "#sqrt{s}"
-    #self.whitebox.AddText(0.04,1.0/6.0,"{0}={1} TeV".format(mysqrt,CME))
-    #persistent = self.whitebox.DrawClone()
-    #self.whitebox.SetTextAlign(11)
-    #return persistent
     persistent = ROOT.TLatex()
     persistent.SetTextColor(ROOT.kBlack)
     persistent.SetNDC()
@@ -5633,7 +5638,6 @@ class Morisot(object) :
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
     mypb = "pb^{-1}"
-#    inputstring1 = "{0} = {1} {2}".format(mystring,lumiInFb,myfb)
     if doLumiInPb:
       inputstring1 = "{0} {1}".format(int(lumiInFb*1000),mypb)
     else:
@@ -5649,15 +5653,7 @@ class Morisot(object) :
   def drawCMEAndLumi(self,xstart,ystart,CME,lumiInFb,fontsize=0.05) :
     if lumiInFb < 0 and CME < 0 :
       return
-    # Readjust x location after removing integral and lumi sign
-    xstart = xstart + 0.08
-    '''self.whitebox.Clear()
-    self.whitebox.SetFillStyle(3000) # make box transparent
-    self.whitebox.SetTextSize(fontsize)
-    self.whitebox.SetX1NDC(xstart-0.01)
-    self.whitebox.SetY1NDC(ystart-0.01)
-    self.whitebox.SetX2NDC(xstart+0.32) # was 0.4 before
-    self.whitebox.SetY2NDC(ystart+0.05)'''
+
     mysqrt = "#sqrt{s}"
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
@@ -5665,15 +5661,11 @@ class Morisot(object) :
 
     if doLumiInPb:
       mytext = "{0}={1} TeV, {2} {3}".format(mysqrt,CME,int(lumiInFb*1000),mypb)
-      #self.whitebox.AddText(0.04,1.0/8.0,"{0}={1} TeV, {2} {3}".format(mysqrt,CME,int(lumiInFb*1000),mypb))
     else:
-      #lumitext = ''
       if isinstance(lumiInFb, (list,tuple)):
         lumitext = '-'.join(["{0}".format(l) for l in lumiInFb])
       else: lumitext = lumiInFb
       mytext = "{0}={1} TeV, {2} {3}".format(mysqrt,CME,lumitext,myfb)
-      #self.whitebox.AddText(0.04,1.0/8.0,"{0}={1} TeV, {2} {3}".format(mysqrt,CME,lumiInFb,myfb))
-    #self.whitebox.Draw()
     newtext = ROOT.TLatex()
     newtext.SetNDC()
     newtext.SetTextSize(fontsize)
@@ -5937,8 +5929,6 @@ class Morisot(object) :
         if len(possibleLabels[order]) > len(possibleLabels[order+1]) :
           possibleLabels[order].pop()
     finalLabels = [item for sublist in possibleLabels for item in sublist]
-
-    print "Chose",nLabels,"optimal labels:",finalLabels
     
     # Now decide where to put them and draw them on.
     labelmaker = ROOT.TLatex()
