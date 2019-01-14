@@ -753,6 +753,20 @@ class Morisot(object) :
       self.drawSignificanceHist(residual,firstBin,lastBin,xname,"Rel. Uncert.",fixYAxis = True,\
               inLargerPlot = True, doLogX = True, doErrors = False, fillColour = fillColour, drawAsLine=True, drawSame = drawSame, yRange = residYRange)
 
+      # Make these match the errors from before
+      if len(residualList) == 1 :
+        residual.SetLineStyle(1)
+      else :      
+        # These are established specifically for the 
+        # function choice uncertainty followed by +,- 1 sigma stat.
+        # make more sophisticated if I need it for other things later. 
+        if index == 0:
+          residual.SetLineStyle(2)
+        elif index == 1 or index==2:
+          residual.SetLineStyle(9)
+        else :
+          residual.SetLineStyle(1)
+
     pad2.Update()
     
     # Go to outer pad for labelling
@@ -1636,7 +1650,7 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
-  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0,extraSpace=False) :
+  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0,extraSpace=0,nLabelsX=7) :
   
 
     # Options are for alternate versions of the plot.
@@ -1754,17 +1768,13 @@ class Morisot(object) :
 
     # Update sig formatting
     if dataPointsOption == 2 :
-#      signal2.SetMarkerStyle(20)
        signal2.SetMarkerStyle(23)
     else :
       signal2.SetMarkerStyle(24)
-#    signal1.SetMarkerStyle(25)
     signal1.SetMarkerStyle(32)
 
     signal2.SetMarkerColor(colours[1])
     signal2.SetLineColor(colours[1])
-#    signal2.SetMarkerColor(ROOT.kBlue-3)
-#    signal2.SetLineColor(ROOT.kBlue-3)
     signal2.SetMarkerSize(0.9)
     signal1.SetMarkerSize(0.9)
     signal1.SetMarkerColor(colours[2])
@@ -1799,17 +1809,18 @@ class Morisot(object) :
       minYaxis = float(actualMin)/2.0
     #minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
     if extraSpace :
-      dataHist.GetYaxis().SetRangeUser(minYaxis,20*actualMax) # was 10
+      dataHist.GetYaxis().SetRangeUser(minYaxis,20*extraSpace*actualMax)
     else :
-      dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax) # was 10
+      dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax)
 
     dataHist.GetXaxis().SetMoreLogLabels()
 
     # If we only want data, we're done now.
     if fancinessOption == 1 :
 
-      # Draw x axis labels that aren't a mess
-      self.fixTheBloodyLabels(outpad,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.05,overrideY=0.13)
+      # Draw x axis labels that aren't a mess,
+      # but only if necessary
+      self.fixTheBloodyLabels(outpad,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.05,nLabels=nLabelsX,overrideY=0.13)
       outpad.cd()
     
       # Do ATLAS and channel labels
@@ -2055,8 +2066,8 @@ class Morisot(object) :
     # Legends with appropriate dimensions
     bottomOfLegend1 = 0.415
     topOfLegend2 = 0.95
-    depthOfLegend = min(0.04*(2+(2 if (fancinessOption!=1 and fancinessOption!=2) else 0)),0.1) # data, fit, any signal
-    depthOfLegend = depthOfLegend + 0.07*(float(doWindowLimits)+float(doBumpLimits)) # window and bump limits
+    depthOfLegend = min(0.04*(2+(2 if (fancinessOption!=1 and fancinessOption!=2) else 0)),0.1)+0.05 # data, fit, any signal
+    depthOfLegend = depthOfLegend + 0.05*(float(doWindowLimits)) # window and bump limits
     if (datastring1 or datastring2) : depthOfLegend = depthOfLegend + 0.04
     topOfLegend1 = bottomOfLegend1 + depthOfLegend
     bottomOfLegend2 = topOfLegend2 - depthOfLegend
@@ -2107,17 +2118,17 @@ class Morisot(object) :
     # Adding p-values to plot:
     # want them adjascent to legends
     if self.dodrawUsersText:
-      if doBumpLimits:
-        self.drawUsersTextLeftAligned(leftOfLegend1,topOfLegend1+0.02,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033)
-        self.drawUsersTextRightAligned(0.68,bottomOfLegend2-0.08,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033)
+      #if doBumpLimits:
+      self.drawUsersTextLeftAligned(leftOfLegend1,topOfLegend1+0.02,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033)
+      self.drawUsersTextRightAligned(0.68,bottomOfLegend2-0.08,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033)
 
     # Save.
     pad1.RedrawAxis()
     pad2.RedrawAxis()
     pad3.RedrawAxis()
 
-    # Draw x axis labels that aren't a mess
-    self.fixTheBloodyLabels(pad2,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17)
+    # Draw x axis labels that aren't a mess    
+    self.fixTheBloodyLabels(pad2,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17,nLabels=nLabelsX)
     
     c.RedrawAxis()
     c.Update()
@@ -3391,8 +3402,6 @@ class Morisot(object) :
     else :
       maxY = ymax
 
-    print "minX, maxX are:",minX,maxX
-
     # Set axis names.
     # So far, should always be thus so don't pass as parameters.
 
@@ -4350,7 +4359,6 @@ class Morisot(object) :
     if printCanvas :
       bkgPlot.GetYaxis().SetRangeUser(minval - 0.1,maxval+0.1)
     elif FixY :
-      print "val is", bkgPlot.GetBinContent(bkgPlot.GetMinimumBin())
       if bkgPlot.GetBinContent(bkgPlot.GetMinimumBin()) >= -1.0 :
         bkgPlot.GetYaxis().SetRangeUser(-1.3,3.7)
       else :
@@ -5928,6 +5936,9 @@ class Morisot(object) :
       for order in range(len(possibleLabels)-1) :
         if len(possibleLabels[order]) > len(possibleLabels[order+1]) :
           possibleLabels[order].pop()
+        else :
+          possibleLabels[order+1].pop()
+
     finalLabels = [item for sublist in possibleLabels for item in sublist]
     
     # Now decide where to put them and draw them on.
