@@ -906,6 +906,10 @@ class Morisot(object) :
     # Left, Right, or Wide
     persistent = []
 
+    if not histograms :
+      print "No hists!! Not plotting"
+      return
+
     canvasname = name+'_cv'
     outputname = name+epsorpdf
     if saveCfile:
@@ -4060,6 +4064,54 @@ class Morisot(object) :
     c.Update()
 
     c.RedrawAxis()
+    c.Update()
+    c.SaveAs(outputname)
+    if saveCfile:
+      c.SaveSource(Coutputname)
+    if saveRfile:
+      c.SaveSource(Routputname)
+    if saveEfile:
+      c.SaveAs(Eoutputname)
+
+  def draw2DHist(self,hist,name,xAxisName,xlow,xhigh,yAxisName,ylow,yhigh,zAxisName,luminosity=-1,CME=-1,doRectangular=False,makeCanvas=True) :
+
+    canvasname = name+'_cv'
+    outputname = name+epsorpdf
+    if saveCfile:
+      Coutputname = name+'.C'
+    if saveRfile:
+      Routputname = name+'.root'
+    if saveEfile:
+      Eoutputname = name+'.eps'
+    c = self.makeCanvas(canvasname,doRectangular,1.2)
+    c.SetLogx(0)
+    c.SetLogy(0)
+    c.SetGridx(0)
+    c.SetGridy(0)
+
+    c.SetRightMargin(0.2)
+
+    hist.Draw("colz")
+    #hist.GetZaxis().SetRangeUser(0,4)
+    hist.GetZaxis().SetTitle(zAxisName)
+    hist.GetZaxis().SetTitleOffset(1.40)
+    hist.GetXaxis().SetRangeUser(xlow,xhigh)
+    hist.GetXaxis().SetTitleOffset(1.40)
+    hist.GetYaxis().SetRangeUser(ylow,yhigh)
+    hist.GetYaxis().SetTitle(yAxisName)
+    hist.GetXaxis().SetTitle(xAxisName)
+    hist.GetYaxis().SetTitleOffset(1.50)
+    hist.GetYaxis().SetLabelSize(0.05)
+    hist.GetYaxis().SetNdivisions(705, ROOT.kTRUE)
+
+    lumInFb = round(float(luminosity)/float(1000),nsigfigs)
+    self.drawATLASLabels(0.17,0.88,False,True,0.05)
+
+    if CME > 0 :
+      p1 = self.drawCME(0.165,0.81,CME,0.05)
+    if lumInFb > 0 :
+      p2 = self.drawLumi(0.17,0.74,lumInFb,0.05)
+
     c.Update()
     c.SaveAs(outputname)
     if saveCfile:

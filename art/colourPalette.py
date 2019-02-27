@@ -59,9 +59,9 @@ class ColourPalette(object) :
     # Colours for lists
     self.shortGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]  
    
-    self.defaultGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]  
+    self.defaultGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]  
 
-    self.mediumGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]#+...
+    self.mediumGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
 
     self.longGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1] #+...
 
