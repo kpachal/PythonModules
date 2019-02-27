@@ -12,6 +12,7 @@ import math
 import time
 from array import array
 from colourPalette import ColourPalette
+from collections import Iterable
 
 def colorInterpolate(col1, col2,  w = 0.5):
     c1 = ROOT.gROOT.GetColor(col1);
@@ -40,8 +41,8 @@ class Morisot(object) :
     epsorpdf = '.eps'
     global doLumiInPb
     doLumiInPb = False
-    global dodrawUsersText # Add text that the user would like to the plot
-    dodrawUsersText = True # Turn to false for official plots
+    # Add text that the user would like to the plot
+    self.dodrawUsersText = False # Turn to false for official plots
     global saveCfile # Option to save a .C version of all the plots
     saveCfile = False
     global saveRfile # Option to save a .root version of all the plots
@@ -72,6 +73,10 @@ class Morisot(object) :
     self.myLatex.SetTextColor(ROOT.kBlack)
     self.myLatex.SetNDC()
 
+    self.myLatex2 = ROOT.TLatex()
+    self.myLatex2.SetTextColor(ROOT.kBlack)
+    self.myLatex2.SetNDC()
+
     self.whitebox = ROOT.TPaveText()
     self.whitebox.SetFillColor(0)
     self.whitebox.SetFillStyle(1001)
@@ -81,8 +86,19 @@ class Morisot(object) :
     self.whitebox.SetBorderSize(0)
 
     self.line = ROOT.TLine()
+    self.line2 = ROOT.TLine()
 
     self.labeltype = 2 # ATLAS internal
+    
+    self.labelDict = {
+      0 : "", # ATLAS public
+      1 : "Preliminary",
+      2 : "Internal",
+      3 : "Simulation Preliminary",
+      4 : "Simulation Internal",
+      5 : "Simulation",
+      6 : "Work in Progress"
+    }
 
 #    self.set2DPalette()
 
@@ -382,7 +398,7 @@ class Morisot(object) :
     temp = self.drawFitHist(fitHist,firstBin,lastBin,xname,yname,False,False,drawError,errors,drawAsSmoothCurve,-1,1,doEndLines)
     self.drawDataHist(dataHist,firstBin,lastBin,"","",True,1)
     # Lydia adding analysis cuts values to plot
-    if dodrawUsersText :
+    if self.dodrawUsersText :
       self.drawUsersText(0.605,0.72,self.cutstring,0.05)
 
     lumiInFb = round(float(luminosity)/float(1000),nsigfigs)
@@ -508,33 +524,9 @@ class Morisot(object) :
     c.SetLogx(doLogX)
     c.SetLogy(doLogY)
 
-    # Dimensions: xlow, ylow, xup, yup
-    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
-    pad1 = ROOT.TPad("pad1","pad1",0,0.3,1,1) # For main histo
-    pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.3) # For residuals histo
-
-    # Set up to draw in right orientations
-    outpad.SetFillStyle(4000) #transparent
-    pad1.SetBottomMargin(0.00001)
-    pad1.SetBorderMode(0)
-    pad1.SetLogy(1)
+    outpad,pad1,pad2 = self.setStandardTwoPads()
     pad1.SetLogx(doLogX)
-    pad2.SetTopMargin(0.00001)
-    pad2.SetBottomMargin(0.43)
-    pad2.SetBorderMode(0)
     pad2.SetLogx(doLogX)
-    pad1.Draw()
-    pad2.Draw()
-    outpad.Draw()
-
-    # Lydia EOYE
-    # Publication-friendly margins
-    pad1.SetLeftMargin(0.1)
-    pad2.SetLeftMargin(0.1)
-    pad1.SetTopMargin(0.02)
-    pad1.SetRightMargin(0.02)
-    pad2.SetRightMargin(0.02)
-    outpad.Draw()
 
     # Draw data and fit and uncertainty histograms
     pad1.cd()
@@ -555,7 +547,8 @@ class Morisot(object) :
     outpad.cd()
     # Lydia EOYE adding cuts to plots
     # Lydia adding observedStat value to plot
-    if dodrawUsersText:
+    print "dodrawUsersText = ",self.dodrawUsersText
+    if self.dodrawUsersText:
       if writeOnFit:
         if writeOnpval:
           self.drawUsersText(0.17,0.42,"#splitline{#it{p}-value = "+str(round(pval,2))+"}{#splitline{Fit Range: "+str(round(FitMin/1000,1))+" - "+str(round(FitMax/1000,1))+" TeV}{"+"{0}}".format(self.cutstring),0.039)
@@ -619,8 +612,8 @@ class Morisot(object) :
       #self.drawSignificanceHist(residual,firstBin,lastBin,"x","yresidyList[index]",True,True,True,False,goodcolours[index])
       fixYAxis = True
       inLargerPlot = True
-      doLogX = True
-      doErrors = False
+#      doLogX = True
+#      doErrors = False
 
       if index == 0:
         fillColour = goodcolours[1]
@@ -682,7 +675,7 @@ class Morisot(object) :
       residual.GetXaxis().SetTitle(xname)
       residual.GetYaxis().SetNdivisions(805)#5,10,0)
 
-      if doErrors :
+      if drawError :
         residual.Draw("E")
       else :
         residual.Draw("L SAME")
@@ -702,7 +695,7 @@ class Morisot(object) :
       c.SaveAs(Eoutputname)
 
 
-  def drawDataWithFitAsHistogramAndResidualPaper(self,dataHist,fitHist,luminosity,CME,xname,yname,legendlines,name,drawError=False,errors = [],residualList = [],binlow=-1,binhigh=-1,doLogY=False,doLogX=False,drawAsSmoothCurve=False,doRectangular=False,doLegTopRight=True,doLabels=True,doEndLines=False) :
+  def drawDataWithFitAsHistogramAndResidualPaper(self,dataHist,fitHist,luminosity,CME,xname,yname,legendlines,name,drawError=False,errors = [],residualList = [],residYRange = [],binlow=-1,binhigh=-1,doLogY=False,doLogX=False,drawAsSmoothCurve=False,doRectangular=False,doLegTopRight=True,doLabels=True,doEndLines=False) :
 
     canvasname = name+'_cv'
     outputname = name+epsorpdf
@@ -716,41 +709,12 @@ class Morisot(object) :
     c.SetLogx(doLogX)
     c.SetLogy(doLogY)
 
-    # Dimensions: xlow, ylow, xup, yup
-    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
-    pads = []
-    padsize = 0.2
-    topOfSubplots = 0.1 + padsize
-    for ipad in range(2) :
-      padname = "pad_{0}".format(ipad)
-      if ipad == 0 :
-        pad = ROOT.TPad(padname,padname,0,topOfSubplots,1,1) # for main histo
-      elif ipad!= len(residualList) :
-        pad = ROOT.TPad(padname,padname,0,topOfSubplots - ipad*padsize, 1, topOfSubplots - (ipad-1)*padsize)
-      else :
-        pad = ROOT.TPad(padname,padname,0, 0, 1, topOfSubplots - (ipad-1)*padsize)
-      pads.append(pad)
-
-    # Set up to draw in right orientations
-    outpad.SetFillStyle(3000) #transparent
-    for pad in pads :
-      pad.SetBorderMode(0)
-      pad.SetLogx(doLogX)
-      if pads.index(pad)==0 :
-        pad.SetBottomMargin(0.00001)
-        pad.SetLogy(1)
-      elif pads.index(pad)==len(pads)-1 :
-        pad.SetTopMargin(0.00001)
-        pad.SetBottomMargin(0.11/(0.1+padsize))
-      else :
-        pad.SetTopMargin(0.00001)
-        pad.SetBottomMargin(0.00001)
-      pad.Draw()
-    outpad.Draw()
-
+    outpad,pad1,pad2 = self.setStandardTwoPads()
+    pad1.SetLogx(doLogX)
+    pad2.SetLogx(doLogX)
 
     # Draw data and fit and uncertainty histograms
-    pads[0].cd()
+    pad1.cd()
     if (binlow==-1 and binhigh==-1) :
       firstBin,lastBin = self.getAxisRangeFromHist(dataHist)
     else :
@@ -758,20 +722,64 @@ class Morisot(object) :
       lastBin = binhigh
     if dataHist.GetBinLowEdge(firstBin) > 0.001 and dataHist.GetBinLowEdge(firstBin) < 1 :
       dataHist.GetXaxis().SetNoExponent(ROOT.kTRUE)
-#    self.drawDataHist(dataHist,firstBin,lastBin,xname,yname,False,1)
-#    temp = self.drawFitHist(fitHist,firstBin,lastBin,"","",True,False,drawError, errors,drawAsSmoothCurve,-1,1,doEndLines)
-    temp = self.drawFitHist(fitHist,firstBin,lastBin,xname,yname,False,False,drawError,errors,drawAsSmoothCurve,-1,1,doEndLines)
-    self.drawDataHist(dataHist,firstBin,lastBin,"","",True,1)
-    # Lydia adding analysis cuts values to plot
-    if dodrawUsersText:
-      self.drawUsersText(0.65,0.68,self.cutstring,0.045)
-    lumiInFb = round(float(luminosity)/float(1000),nsigfigs)
+    
+    self.drawDataHist(dataHist,firstBin,lastBin,xname,yname,same=False,nPads=2)
+    temp = self.drawFitHist(fitHist,firstBin,lastBin,xname,yname,True,True,drawError,errors,drawAsSmoothCurve,-1,1,doEndLines)
+    pad1.Update()
 
-    legendsize = 0.06*len(legendlines)
+    # Draw residual histograms
+    # Use bin range within which bkgPlot has entries,
+    # plus one empty on either side if available
+    pad2.cd()
+    goodcolours = self.getGoodColours(len(residualList))
+    for index in range(len(residualList)) :
+      residual = residualList[index]
+
+      if residual.GetBinLowEdge(firstBin) > 0.001 and residual.GetBinLowEdge(firstBin) < 1 :
+        residual.GetXaxis().SetNoExponent(ROOT.kTRUE)
+        
+      if index == 0:
+        fillColour = goodcolours[1]
+      if index == 1 or index == 2:
+        fillColour = goodcolours[0]
+      
+      # Add some extra formatting
+      residual.GetYaxis().SetTitleSize(0.156)
+      residual.GetXaxis().SetTitleSize(0.156)
+      
+      if index==0 : drawSame = False
+      else : drawSame = True
+      
+      self.drawSignificanceHist(residual,firstBin,lastBin,xname,"Rel. Uncert.",fixYAxis = True,\
+              inLargerPlot = True, doLogX = True, doErrors = False, fillColour = fillColour, drawAsLine=True, drawSame = drawSame, yRange = residYRange)
+
+      # Make these match the errors from before
+      if len(residualList) == 1 :
+        residual.SetLineStyle(1)
+      else :      
+        # These are established specifically for the 
+        # function choice uncertainty followed by +,- 1 sigma stat.
+        # make more sophisticated if I need it for other things later. 
+        if index == 0:
+          residual.SetLineStyle(2)
+        elif index == 1 or index==2:
+          residual.SetLineStyle(9)
+        else :
+          residual.SetLineStyle(1)
+
+    pad2.Update()
+    
+    # Go to outer pad for labelling
+    outpad.cd()
+    
+    if self.dodrawUsersText:
+      self.drawUsersText(0.55,0.76,self.cutstring,0.04)
+
+    legendsize = 0.04*len(legendlines)
     if legendsize > 0 :
       if doLogX and (not doLegTopRight) :
         leftOfLegend = 0.20
-        legendbottom = 0.1
+        legendbottom = 0.3
         legendtop = legendbottom + legendsize
         legend = self.makeLegend(leftOfLegend,legendbottom,0.50,legendtop)
       else :
@@ -788,93 +796,21 @@ class Morisot(object) :
             legend.AddEntry(errhist[1],legendlines[2+errors.index(errhist)],"L")
       else :
         legend.AddEntry(fitHist,legendlines[1],"PL")
-      legend.SetTextSize(0.045)
+      legend.SetTextSize(0.04)
       legend.Draw()
 
+    lumiInFb = round(float(luminosity)/float(1000),nsigfigs)
     if (doLabels) :
       if legendsize > 0 and doLogX and not doLegTopRight:
-        self.drawCMEAndLumi(0.56,0.75,CME,lumiInFb,0.045)
-        self.drawATLASLabels(0.65,0.82,False,True)
+        self.drawATLASLabels(0.55, 0.88, False, True)
+        self.drawCMEAndLumi(0.55,0.83,CME,lumiInFb,0.04)
+
       else :
         self.drawATLASLabels(0.2, 0.2)
-        self.drawLumiAndCMEVert(0.22,0.28,lumiInFb,CME,0.045)
-
-    pads[0].Update()
-
-    # Draw residual histograms
-    # Use bin range within which bkgPlot has entries,
-    # plus one empty on either side if available
-    pads[1].cd()
-    goodcolours = self.getGoodColours(len(residualList))
-    for index in range(len(residualList)) :
-      residual = residualList[index]
-
-      if residual.GetBinLowEdge(firstBin) > 0.001 and residual.GetBinLowEdge(firstBin) < 1 :
-        residual.GetXaxis().SetNoExponent(ROOT.kTRUE)
-      #self.drawSignificanceHist(residual,firstBin,lastBin,"x","yresidyList[index]",True,True,True,False,goodcolours[index])
-      fixYAxis = True
-      inLargerPlot = True
-      doLogX = True
-      doErrors = False
-
-      if index == 0:
-        fillColour = goodcolours[1]
-      if index == 1 or index == 2:
-        fillColour = goodcolours[0]
-
-      residual.SetLineColor(fillColour)
-      residual.SetLineWidth(2)
-      residual.GetYaxis().SetTitleSize(0.156)
-      residual.GetYaxis().SetTitleOffset(0.3) # 1.2 = 20% larger
-      residual.GetYaxis().SetLabelSize(0.115)
-      residual.GetYaxis().SetTitle("Rel. Uncert.")
-      residual.GetXaxis().SetLabelSize(0.15)
-      residual.GetXaxis().SetTitleSize(0.156)
-      residual.GetXaxis().SetTitleOffset(1.1)
-      residual.GetXaxis().SetTitle(xname)
-      residual.GetXaxis().SetRange(firstBin,lastBin)
-      if index ==0:
-        lowPoint = residual.GetBinContent(residual.GetMaximumBin())
-        highPoint = residual.GetMinimum()
-        ylow = 0.0
-        yhigh = 0.0
-        for bin in range(firstBin,lastBin+1) :
-          val = residual.GetBinContent(bin)
-          if val < lowPoint :
-            lowPoint = val
-          if val > highPoint :
-            highPoint = val
-        if highPoint == 20 :
-          highPoint = 7
-        if fixYAxis==False :
-          if lowPoint < 0 :
-            ylow = lowPoint*1.2
-            yhigh = max(highPoint*(1.2),0.15)
-          else :
-            ylow = lowPoint - 0.9*(highPoint - lowPoint)
-            yhigh = highPoint + 0.9*(highPoint - lowPoint)
-        else :
-          if abs(residual.GetBinContent(residual.GetMaximumBin())) < 1.5 :
-            ylow = -1.7
-            yhigh = 1.7
-          else :
-            ylow = -3.7
-            yhigh = 3.7
-        residual.GetYaxis().SetRangeUser(ylow,yhigh)
-        if inLargerPlot :
-          residual.GetYaxis().SetTickLength(0.055)
-        residual.GetXaxis().SetNdivisions(805,ROOT.kTRUE)
-
-      ###residual.GetYaxis().SetTitle(yname)
-      ###residual.GetXaxis().SetTitle(xname)
-      if doErrors :
-        residual.Draw("E")
-      else :
-        residual.Draw("L SAME")
-
-      self.fixTheBloodyTickMarks(ROOT.gPad, residual, residual.GetBinLowEdge(firstBin), residual.GetBinLowEdge(lastBin+1),ylow,yhigh)
-
-    pads[1].Update()
+        self.drawLumiAndCMEVert(0.22,0.28,lumiInFb,CME,0.04)
+    
+    outpad.Update()
+    
     c.RedrawAxis()
     c.Update()
     c.SaveAs(outputname)
@@ -966,8 +902,13 @@ class Morisot(object) :
       c.SaveAs(Eoutputname)
 
 
-  def drawManyOverlaidHistograms(self,histograms,names,xname,yname,name,xmin,xmax,ymin,ymax,extraLegendLines = [],doLogX=False,doLogY=True,doErrors=False,doRectangular=False,doLegend=True,doLegendLow=True,doLegendLocation="Left",doLegendOutsidePlot=False,doATLASLabel="Low",pairNeighbouringLines=False,dotLines = [],addHorizontalLines=[]) :
+  def drawManyOverlaidHistograms(self,histograms,names,xname,yname,name,xmin,xmax,ymin,ymax,extraLegendLines = [],doLogX=False,doLogY=True,doErrors=False,doRectangular=False,doLegend=True,doLegendLow=True,doLegendLocation="Left",doLegendOutsidePlot=False,doATLASLabel="Low",doCME=None,pairNeighbouringLines=False,dotLines = [],addHorizontalLines=[]) :
     # Left, Right, or Wide
+    persistent = []
+
+    if not histograms :
+      print "No hists!! Not plotting"
+      return
 
     canvasname = name+'_cv'
     outputname = name+epsorpdf
@@ -1013,7 +954,8 @@ class Morisot(object) :
     lownonzeros = []
     highxvals = []
     highyvals = []
-    for histogram in histograms :
+    flat_histograms = self.flatten_list(histograms)
+    for histogram in flat_histograms : # flattens in case sub-lists
       lowx,highx = self.getAxisRangeFromHist(histogram)
       lowy,lownonzero,highy = self.getYRangeFromHist(histogram)
       lowxvals.append(lowx)
@@ -1063,8 +1005,10 @@ class Morisot(object) :
         legendbottom = 0.20
         legendtop = legendbottom + legendsize
       else :
-        legendtop = 0.90 - (0.05)*len(extraLegendLines)
+        legendtop = 0.90 - (0.04)*len(extraLegendLines)
         if doATLASLabel != "Low" and doATLASLabel != "None":
+          legendtop = legendtop - 0.05
+        if doCME :
           legendtop = legendtop - 0.05
         legendbottom = legendtop - legendsize
       if doLegendLocation == "Left" :
@@ -1085,34 +1029,51 @@ class Morisot(object) :
     else :
       goodcolours = self.getGoodColours(len(histograms))
 
-    for histogram in histograms :
-      index = histograms.index(histogram)
-      if pairNeighbouringLines :
+    for item in histograms :
+      index = histograms.index(item)
+      # If this is a list, I want only one legend entry
+      # and for each histogram to have the same coding.
+      if isinstance(item, Iterable) :
+        for histogram in item :
+          histogram.SetLineColor(goodcolours[index])
+          histogram.SetMarkerColor(goodcolours[index])
+          histogram.SetLineStyle(1)
+          if dotLines != [] and dotLines[index] == True:
+            histogram.SetLineStyle(index+1)
+        legend.AddEntry(item[0],names[index],"PL")
+      elif pairNeighbouringLines :
         print "Pairing!"
-        histogram.SetLineColor(goodcolours[int(index/2.0)])
-        histogram.SetMarkerColor(goodcolours[int(index/2.0)])
-#        if index % 2 == 1 :
-#          histogram.SetLineStyle(2)
+        item.SetLineColor(goodcolours[int(index/2.0)])
+        item.SetMarkerColor(goodcolours[int(index/2.0)])
+        legend.AddEntry(item,names[index],"PL")
       else :
-        histogram.SetLineColor(goodcolours[index])
-        histogram.SetMarkerColor(goodcolours[index])
-        histogram.SetLineStyle(1)
+        item.SetLineColor(goodcolours[index])
+        item.SetMarkerColor(goodcolours[index])
+        item.SetLineStyle(1)
         if dotLines != [] and dotLines[index] == True:
-          histogram.SetLineStyle(index+1)
+          item.SetLineStyle(index+1)
+        legend.AddEntry(item,names[index],"PL")
 
+    # Drawing happens for each
+    for histogram in flat_histograms : # flattens in case sub-lists
+      index = flat_histograms.index(histogram)
       histogram.SetLineWidth(2)
       histogram.SetFillStyle(0)
       histogram.SetTitle("")
-      histogram.GetXaxis().SetRange(minX,maxX+5)
+      histogram.GetXaxis().SetRange(minX,maxX)#+5)
       histogram.GetYaxis().SetRangeUser(minY,maxY)
       histogram.GetYaxis().SetTitleSize(0.06)
-      histogram.GetYaxis().SetTitleOffset(1.2)
+      histogram.GetYaxis().SetTitleOffset(1.3) # 1.2
       histogram.GetYaxis().SetLabelSize(0.06)
+      
       histogram.GetXaxis().SetTitleSize(0.06)
       histogram.GetXaxis().SetTitleOffset(1.2)
       histogram.GetXaxis().SetLabelSize(0.06)
       histogram.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
-      legend.AddEntry(histogram,names[index],"PL")
+      
+      # Try to tidy up ugly y axes
+      histogram.GetYaxis().SetNdivisions(605,ROOT.kTRUE)
+      
       if (index==0) :
         histogram.GetXaxis().SetTitle(xname)
         histogram.GetYaxis().SetTitle(yname)
@@ -1137,18 +1098,11 @@ class Morisot(object) :
 
       if doLegendOutsidePlot :
         index = 0
-        if len(extraLegendLines) > 0 :
-#          if doLegendLow :
-#            leftOfLegend = 0.15
-#            legendtop = 0.20
-#          else :
-#            if doLegendLeft :
-#              leftOfLegend = 0.20
-#            else :
-#              leftOfLegend = 0.55
-#            legendtop = 0.90 - (0.06)*len(extraLegendLines)
+        if len(extraLegendLines) > 0 :         
           for item in range(len(extraLegendLines)) :
             toplocation = legendtop +0.02 + (0.01+0.05)*(index)
+            if doCME :
+              toplocation = toplocation-0.05
             item = self.myLatex.DrawLatex(leftOfLegend+0.02,toplocation,extraLegendLines[index])
             index = index+1
         pad2.cd()
@@ -1160,28 +1114,39 @@ class Morisot(object) :
       else :
         index = 0
         if len(extraLegendLines) > 0 :
+          self.myLatex.SetTextSize(0.04)           
           for line in extraLegendLines :
-            toplocation = legendtop +0.02 + (0.01+0.04)*(index)
+            toplocation = legendtop +0.02 + (0.04)*(index)
             if doLegendLocation == "Left" :
-              extralength = 0
+              self.myLatex.SetTextAlign(11)
+              xLocation = leftOfLegend+0.01
             else :
-              extralength = float(max(len(line) - 19,0)/35.0)
-            item = self.myLatex.DrawLatex(leftOfLegend+0.01-extralength,toplocation,line)
+              self.myLatex.SetTextAlign(31)
+              xLocation = 0.90
+            item = self.myLatex.DrawLatex(xLocation,toplocation,line)
             index = index+1
         legend.Draw()
 
     if doATLASLabel == "Low" :
       if doLegendLow :
-        self.drawATLASLabels(0.22,0.88,False,doRectangular)
+        persistent.append(self.drawATLASLabels(0.22,0.88,False,doRectangular))
+        if doCME : 
+          persistent.append(self.drawCME(0.22,0.83,doCME,0.05))
       else :
-        self.drawATLASLabels(0.2, 0.2,False,doRectangular)
+        persistent.append(self.drawATLASLabels(0.2, 0.25,False,doRectangular))
+        if doCME :
+          persistent.append(self.drawCME(0.2,0.2,doCME,0.05))
     elif doATLASLabel == "None" :
       pass
     else :
       if doLegendLocation == "Left" :
-        self.drawATLASLabels(0.2,0.88)
+        persistent.append(self.drawATLASLabels(0.2,0.88))
+        if doCME : 
+          persistent.append(self.drawCME(0.2,0.83,doCME,0.05))
       else :
-        self.drawATLASLabels(0.53,0.88, True)
+        persistent.append(self.drawATLASLabels(0.90,0.88,True))
+        if doCME: 
+          persistent.append(self.drawCME(0.90,0.83,doCME,0.05,True))
 
     if addHorizontalLines != [] :
       for val in addHorizontalLines :
@@ -1433,7 +1398,7 @@ class Morisot(object) :
     self.drawCMEAndLumi(0.14,0.82,CME,lumInFb,0.04)
 
     # Lydia adding observedStat value to plot
-    if dodrawUsersText:
+    if self.dodrawUsersText:
       self.drawUsersText(0.22,0.62,"#it{p}-value = "+str(round(pval,2)),0.04)
 
     c.RedrawAxis()
@@ -1504,24 +1469,10 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
-    # Dimensions: xlow, ylow, xup, yup
-    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
-    pad1 = ROOT.TPad("pad1","pad1",0,0.27,1,1) # For main histo
-    pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.27) # For residuals histo
-
-    # Set up to draw in right orientations
-    outpad.SetFillStyle(4000) #transparent
-    pad1.SetBottomMargin(0.00001)
-    pad1.SetBorderMode(0)
+    outpad,pad1,pad2 = self.setStandardTwoPads()
     pad1.SetLogy(1)
     pad1.SetLogx(doLogX)
-    pad2.SetTopMargin(0.00001)
-    pad2.SetBottomMargin(0.3)
-    pad2.SetBorderMode(0)
     pad2.SetLogx(doLogX)
-    pad1.Draw()
-    pad2.Draw()
-    outpad.Draw()
 
     # Draw data and fit histograms
     pad1.cd()
@@ -1534,10 +1485,7 @@ class Morisot(object) :
     if (lastBin>0 and lastBin>=firstBin) :
       highbin = lastBin
 
-    fitHist.GetYaxis().SetTitleSize(0.05)
-    fitHist.GetYaxis().SetTitleOffset(1.0)
-    fitHist.GetYaxis().SetLabelSize(0.05)
-    self.drawDataHist(dataHist,lowbin,highbin,x,datay,False,2)
+    self.drawDataHist(dataHist,lowbin,highbin,x,datay,same=False,nPads=2)
     self.drawFitHist(fitHist,lowbin,highbin,"","",True,True,False,[],False,ROOT.kRed,1)
     firstBinWithData,lastBinWithData = self.getAxisRangeFromHist(dataHist)
 
@@ -1649,10 +1597,10 @@ class Morisot(object) :
       bottomOfLegend = 0.78
       legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.9,0.87)
     else :
-      self.drawATLASLabels(0.5, 0.87, True)
+      self.drawATLASLabels(0.45, 0.87, True)
       self.drawCMEAndLumi(0.41,0.82,CME,lumInFb,0.04)
-      bottomOfLegend = 0.78 - 0.07*(float(doWindowLimits)+float(doBumpLimits))
-      legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.9,0.805)
+      bottomOfLegend = 0.80 - widthOfRow*(2.0+float(doWindowLimits)+float(doBumpLimits))
+      legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.9,0.80,0.04)
 
     c.Update()
 
@@ -1662,7 +1610,6 @@ class Morisot(object) :
     persistent = []
     toplocation = bottomOfLegend
     if len(extraLegendLines) > 0 :
-#      toplocation = bottomOfLegend - (0.01+widthOfRow)*(index) #topOfAll - (0.03+2*widthOfRow) - (0.01+widthOfRow)*(index)
       for line in extraLegendLines :
         toplocation = bottomOfLegend - (widthOfRow)*(index+1) #topOfAll - (0.03+2*widthOfRow) - (0.01+widthOfRow)*(index)
         persistent.append(self.myLatex.DrawLatex(leftOfLegend+0.01,toplocation,line))
@@ -1681,15 +1628,16 @@ class Morisot(object) :
     c.Update()
 
     # Lydia adding observedStat value to plot
-    if dodrawUsersText:
+    if self.dodrawUsersText:
       if doBumpLimits:
         if not writeOnpval:
           self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" GeV}{"+"{0}}}".format(self.cutstring),0.033)
         else:
-          self.drawUsersText(0.21,0.42,"#splitline{#it{p}-value = "+str(round(pval,2))+"}{#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}}".format(self.cutstring),0.04)
+          textline = "#splitline{#it{p}-value = "+str(round(pval,2))+"}{#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+self.cutstring+"}}"
+          self.drawUsersText(0.21,0.42,textline,0.04)
       else:
         if not writeOnpval:
-          self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}".format(self.cutstring),0.033)
+          self.drawUsersText(0.5,toplocation - 0.06 - len(extraLegendLines)*(widthOfRow+0.01),"#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}}".format(self.cutstring),0.033)
         else:
           self.drawUsersText(0.56,0.7,"#splitline{#it{p}-value = "+str(round(pval,2))+"}{#splitline{Fit Range: "+str(FitMin)+" - "+str(FitMax)+" TeV}{"+"{0}}}".format(self.cutstring),0.04)
 
@@ -1705,6 +1653,497 @@ class Morisot(object) :
       c.SaveSource(Routputname)
     if saveEfile:
       c.SaveAs(Eoutputname)
+
+  def drawDataAndFitsOverSignificanceHists_TwoSpectra(self,dataHist,fitHist,significance,dataHist2,fitHist2,significance2,signal1,signal2,scale1,scale2,x,datay,sigy,name,lumi1,lumi2,datastring1,datastring2,CME,FitMin,FitMax,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,bumpLow2=0,bumpHigh2=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = True, pval = -999, chi2pval = -999,pval2 = -999, chi2pval2 = -999,doWindowLimits=False,windowLow=0,windowHigh=0,dataPointsOption=0,fancinessOption=0,extraSpace=0,nLabelsX=7) :
+  
+
+    # Options are for alternate versions of the plot.
+    # dataPointsOption:
+    # 0 = solid squares for longer data spectrum, open squares for its 1 signal,
+    #     solid circles for shorter spectrum, open circles for its 1 signal
+    # 1 = same shapes as 0 but points are colour coded to match their spectra
+    # 2 = all solid shapes for longer data spectrum, all open shapes for shorter one
+    
+    # fancinessOption:
+    # 0 = default: data, fit, one signal per spectrum
+    # 1 = least fancy: only data
+    # 2 = data + fit, no signals
+    # 3 = default with an extra signal per mass
+
+    # Make canvas
+    canvasname = name+'_cv'
+    outputname = name+epsorpdf
+    EPSoutputname = name+'.eps'
+    if saveCfile:
+      Coutputname = name+'.C'
+    if saveRfile:
+      Routputname = name+'.root'
+    if saveEfile:
+      Eoutputname = name+'.pdf'
+      EPSoutputname = name+'.eps'
+    c = self.makeCanvas(canvasname,True) #Hanno: Was False
+    c.SetLogx(1)
+    c.SetLogy(doLogX)
+    c.SetGridx(0)
+    c.SetGridy(0)
+
+    # Make pads
+    # Dimensions: xlow, ylow, xup, yup
+    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
+    pad1 = ROOT.TPad("pad1","pad1",0,0.4,1,1) # For main histo
+    pad2 = ROOT.TPad("pad2","pad2",0,0.25,1,0.4) # For residuals histo
+    pad3 = ROOT.TPad("pad2","pad2",0,0,1,0.25) # For residuals histo    
+
+    # Set up pads to draw with right spacings
+    outpad.SetFillStyle(4000) #transparent
+    pad1.SetBorderMode(0)
+    pad1.SetLogy(1)
+    pad1.SetLogx(doLogX)
+    pad1.SetLeftMargin(0.1)
+    pad1.SetBottomMargin(0.00001)
+    pad2.SetLeftMargin(0.1)
+    pad2.SetTopMargin(0.00001)
+    pad2.SetBottomMargin(0.00001)
+    pad2.SetBorderMode(0)
+    pad2.SetLogx(doLogX)    
+    pad3.SetLeftMargin(0.1)
+    pad3.SetTopMargin(0.00001)
+    pad3.SetBottomMargin(0.4)
+    pad3.SetBorderMode(0)
+    pad3.SetLogx(doLogX)
+    pad1.Draw()
+    pad2.Draw()
+    pad3.Draw()
+    outpad.Draw()
+    
+    # Define a few common items
+    leftOfLegend1 = 0.13
+    widthOfRow = 0.04
+    lumInFb1 = round(float(lumi1)/float(1000),nsigfigs)
+    lumInFb2 = round(float(lumi2)/float(1000),nsigfigs)
+    atlasLabelXLocation = 0.137
+    atlasLabelYLocation = 0.92
+
+    # Draw data and fit histograms
+    if fancinessOption !=1 :
+      pad1.cd()
+    else :
+      outpad.SetBorderMode(0)
+      outpad.SetLogy(1)
+      outpad.SetLogx(doLogX)
+      outpad.SetLeftMargin(0.1)
+      outpad.cd()
+
+    # Get bin range for first spectrum
+    lowbin,highbin = self.getAxisRangeFromHist(dataHist)
+    if (firstBin>0) :
+      lowbin=firstBin
+    if (lastBin>0 and lastBin>=firstBin) :
+      highbin = lastBin
+
+    # For second spectrum just want to start drawing where we fitted it.
+    lowbin2,highbin2 = self.getAxisRangeFromHist(fitHist2)
+    # Gives one bin lower by default and we don't want that.
+    lowbin2 = lowbin2+1
+    
+    # Use colours from colour scheme. Need 4 of them.
+    colours = self.getGoodColours(4)
+
+    # Draw both data hists
+    self.drawDataHist(dataHist,lowbin,highbin,x,datay,True,3)
+    self.drawDataHist(dataHist2,lowbin2,highbin,x,datay,True,3)
+    
+    # Post hoc data plot formatting.
+    dataHist.SetMarkerSize(0.9)
+    dataHist2.SetMarkerSize(0.9)
+    if dataPointsOption == 0 :
+      dataHist.SetMarkerStyle(21)
+    elif dataPointsOption == 1 :
+      dataHist.SetMarkerStyle(21)
+      dataHist.SetMarkerColor(colours[3])
+      dataHist2.SetMarkerColor(colours[0])
+    elif dataPointsOption == 2 :
+      dataHist.SetMarkerStyle(25)
+    
+    # Add signals
+    if fancinessOption < 1 or fancinessOption > 2 :
+      self.drawDataHist(signal1,lowbin,highbin,x,datay,True,3)
+      self.drawDataHist(signal2,lowbin2,highbin,x,datay,True,3)
+
+    # Update sig formatting
+    if dataPointsOption == 2 :
+       signal2.SetMarkerStyle(23)
+    else :
+      signal2.SetMarkerStyle(24)
+    signal1.SetMarkerStyle(32)
+
+    signal2.SetMarkerColor(colours[1])
+    signal2.SetLineColor(colours[1])
+    signal2.SetMarkerSize(0.9)
+    signal1.SetMarkerSize(0.9)
+    signal1.SetMarkerColor(colours[2])
+    signal1.SetLineColor(colours[2])
+    
+    # Draw fits
+    if fancinessOption != 1 :
+      self.drawFitHist(fitHist,lowbin,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[3],lineStyle=1)
+      self.drawFitHist(fitHist2,lowbin2,highbin,"","",same=True,twoPads=True,useError=False,errors=[],drawCurve=False,lineColor=colours[0],lineStyle=1)
+
+      # Update label formatting
+      dataHist.GetYaxis().SetTitleFont(43)
+      dataHist.GetYaxis().SetTitleSize(25)
+      dataHist.GetYaxis().SetTitleOffset(1)
+      dataHist.GetYaxis().SetLabelFont(43)
+      dataHist.GetYaxis().SetLabelSize(25)
+      
+    dataHist.GetYaxis().SetTitle("Events / Bin")
+    dataHist.GetXaxis().SetLabelSize(0)
+    
+    # Update axis range
+    actualMin = 1E10
+    actualMax = 0
+    for bin in range(firstBin,lastBin+1) :
+      if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
+      elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
+    if actualMin < 1.5 :
+      minYaxis = 0.7
+    elif actualMin < 2.5 :
+      minYaxis = 1.3
+    else :
+      minYaxis = float(actualMin)/2.0
+    #minYaxis = 0.7 if actualMin < 2.5 else float(actualMin)/2.0
+    if extraSpace :
+      dataHist.GetYaxis().SetRangeUser(minYaxis,20*extraSpace*actualMax)
+    else :
+      dataHist.GetYaxis().SetRangeUser(minYaxis,10*actualMax)
+
+    dataHist.GetXaxis().SetMoreLogLabels()
+
+    # If we only want data, we're done now.
+    if fancinessOption == 1 :
+
+      # Draw x axis labels that aren't a mess,
+      # but only if necessary
+      self.fixTheBloodyLabels(outpad,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.05,nLabels=nLabelsX,overrideY=0.13)
+      outpad.cd()
+    
+      # Do ATLAS and channel labels
+      atlasLabelYLocation = 0.88 # Looks squashed with same dimensions as other plot
+      persistent = []      
+      persistent.append(self.drawCME(atlasLabelXLocation,atlasLabelYLocation - 0.045,CME,0.04))
+      self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
+
+      self.myLatex.SetTextFont(42)
+      self.myLatex.SetTextSize(0.04)
+      index = 0
+      if len(extraLegendLines) > 0 :
+        for line in extraLegendLines :
+          toplocation = atlasLabelYLocation - (widthOfRow)*(index+1)-0.02 - 0.045
+          persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
+          index = index+1
+    
+      # Do legend: only one for this plot
+      # No need to split lines as there is plenty of whitespace
+      legend = self.makeLegend(0.14,0.2,0.4,0.35,fontSize = 0.04*0.93)
+      if datastring1 :
+        thisline = "Data, {0} fb^{1}, ".format(lumInFb1,"{-1}")+datastring1
+      else :
+        thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")
+      legend.AddEntry(dataHist,thisline,"LFP")
+
+      if datastring2 :
+        thisline2 = "Data, {0} fb^{1}, {2}".format(lumInFb2,"{-1}",datastring2)
+      else :
+        thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
+      legend.AddEntry(dataHist2,thisline2,"LFP")
+      legend.Draw()
+      c.Update()
+    
+      c.RedrawAxis()
+      c.Update()
+      c.SaveAs(outputname)
+      if saveCfile:
+        c.SaveSource(Coutputname)
+      if saveRfile:
+        c.SaveSource(Routputname)
+      if saveEfile:
+        c.SaveAs(Eoutputname)
+        c.SaveAs(EPSoutputname)
+      
+      return
+      
+    # Otherwise, carry on and go to two-legend structure.
+
+    # Draw significance histogram
+    pad2.cd()
+    self.drawSignificanceHist(significance2,firstBin,lastBin,"","",fixYAxis=True,inLargerPlot = False, doLogX=False, doErrors=False, fillColour = colours[0])
+    
+    # Update label formatting
+    significance2.GetYaxis().SetTitleFont(43)
+    significance2.GetYaxis().SetTitleSize(25)
+    significance2.GetYaxis().SetTitleOffset(1) # 1.2 = 20% larger
+    significance2.GetYaxis().SetLabelFont(43)
+    significance2.GetYaxis().SetLabelSize(25)
+
+    pad3.cd()
+    self.drawSignificanceHist(significance,firstBin,lastBin,x,"",fixYAxis=True,inLargerPlot = True, doLogX=False, doErrors=False, fillColour = colours[3])
+    
+    # Update label formatting
+    significance.GetXaxis().SetNoExponent(1)
+    significance.GetYaxis().SetTitleFont(43)
+    significance.GetYaxis().SetTitleSize(25)
+    significance.GetYaxis().SetTitleOffset(1) # 1.2 = 20% larger
+    significance.GetYaxis().SetLabelFont(43)
+    significance.GetYaxis().SetLabelSize(25)
+    significance.GetXaxis().SetLabelFont(43)
+    significance.GetXaxis().SetLabelSize(25)
+    # This allows custom label formatting.
+    significance.GetXaxis().SetLabelSize(0)
+    significance.GetXaxis().SetTitleFont(43)
+    significance.GetXaxis().SetTitleSize(25)
+    significance.GetXaxis().SetTitleOffset(4) # 1.2
+    significance.GetXaxis().SetNdivisions(802,ROOT.kTRUE)
+    
+    # Redraw y axis label for significances
+    outpad.cd()
+    self.myLatex2.SetTextAngle(90)
+    self.myLatex2.SetTextFont(43)
+    self.myLatex2.SetTextSize(24)
+    self.myLatex2.DrawLatex(0.039, 0.155, "Significance")
+
+    c.Update()
+
+    # Make a bunch of lines
+    self.line.SetLineStyle(2)
+    line1 = self.line.Clone("line1"); line1lims = []
+    line2 = self.line.Clone("line2"); line2lims = []
+    line3 = self.line.Clone("line3"); line3lims = []
+    line4 = self.line.Clone("line4"); line4lims = []
+    line5 = self.line.Clone("line5"); line1lims = []
+    line6 = self.line.Clone("line6"); line2lims = []
+    line7 = self.line.Clone("line7"); line3lims = []
+    line8 = self.line.Clone("line8"); line4lims = []
+    line3_pad2 = self.line.Clone("line3_pad2"); line3lims = []
+    line4_pad2 = self.line.Clone("line4_pad2"); line4lims = []
+    line1_2 = self.line.Clone("line1"); line1lims_2 = []
+    line2_2 = self.line.Clone("line2"); line2lims_2 = []
+    line3_2 = self.line.Clone("line3"); line3lims_2 = []
+    line4_2 = self.line.Clone("line4"); line4lims_2 = []
+    line5_2 = self.line.Clone("line5"); line1lims_2 = []
+    line6_2 = self.line.Clone("line6"); line2lims_2 = []
+    line7_2 = self.line.Clone("line7"); line3lims_2 = []
+    line8_2 = self.line.Clone("line8"); line4lims_2 = []
+    
+    # Draw bump lines
+    if doBumpLimits :
+      heightLowEdge=0
+      heightHighEdge=0
+      minYvalue = dataHist.GetMinimum()
+      for i in range(dataHist.GetNbinsX()) :
+        locationOfTallEdge = dataHist.GetBinLowEdge(i)
+        height = dataHist.GetBinContent(i)
+        if locationOfTallEdge == bumpLow :
+          heightLowEdge = dataHist.GetBinContent(i)
+        if locationOfTallEdge == bumpHigh:
+          heightHighEdge = dataHist.GetBinContent(i-1)
+
+      lowYVal = significance.GetMinimum()#-0.2
+      highYVal = significance.GetMaximum()#+0.2
+
+      line1lims = [bumpLow,0.5*minYvalue,bumpLow,heightLowEdge]
+      line2lims = [bumpHigh,0.5*minYvalue,bumpHigh,heightHighEdge]
+      line3lims = [bumpLow,lowYVal,bumpLow,highYVal]
+      line4lims = [bumpHigh,lowYVal,bumpHigh,highYVal]
+      helperlinelims = [850,-4.68,943,-4.68]
+      
+      heightLowEdge_2=0
+      heightHighEdge_2=0
+      minYvalue_2 = dataHist2.GetMinimum()
+      for i in range(dataHist2.GetNbinsX()) :
+        locationOfTallEdge_2 = dataHist2.GetBinLowEdge(i)
+        height_2 = dataHist2.GetBinContent(i)
+        if locationOfTallEdge_2 == bumpLow2 :
+          heightLowEdge_2 = dataHist2.GetBinContent(i)
+        if locationOfTallEdge_2 == bumpHigh2:
+          heightHighEdge_2 = dataHist2.GetBinContent(i-1)
+
+      lowYVal_2 = significance2.GetMinimum()#-0.2
+      highYVal_2 = significance2.GetMaximum()#+0.2
+      line1lims_2 = [bumpLow2,0.5*minYvalue_2,bumpLow2,heightLowEdge_2]
+      line2lims_2 = [bumpHigh2,0.5*minYvalue_2,bumpHigh2,heightHighEdge_2]
+      line3lims_2 = [bumpLow2,lowYVal_2,bumpLow2,highYVal_2]
+      line4lims_2 = [bumpHigh2,lowYVal_2,bumpHigh2,highYVal_2]      
+
+      # Draw lines
+      pad1.cd()
+      line1.SetLineColor(colours[3])
+      line1.SetX1(line1lims[0]); line1.SetY1(line1lims[1]); line1.SetX2(line1lims[2]); line1.SetY2(line1lims[3])
+      line1.Draw()
+      line2.SetLineColor(colours[3])
+      line2.SetX1(line2lims[0]); line2.SetY1(line2lims[1]); line2.SetX2(line2lims[2]); line2.SetY2(line2lims[3])
+      line2.Draw()
+      pad2.cd()
+      line3_pad2.SetLineColor(colours[3])
+      line3_pad2.SetX1(line3lims[0]); line3_pad2.SetY1(line3lims[1]); line3_pad2.SetX2(line3lims[2]); line3_pad2.SetY2(line3lims[3])
+      line3_pad2.Draw()
+      line4_pad2.SetLineColor(colours[3])
+      line4_pad2.SetX1(line4lims[0]); line4_pad2.SetY1(line4lims[1]); line4_pad2.SetX2(line4lims[2]); line4_pad2.SetY2(line4lims[3])
+      line4_pad2.Draw()
+      pad3.cd()
+      line3.SetLineColor(colours[3])
+      line3.SetX1(line3lims[0]); line3.SetY1(line3lims[1]); line3.SetX2(line3lims[2]); line3.SetY2(line3lims[3])
+      line3.Draw()
+      line4.SetLineColor(colours[3])
+      line4.SetX1(line4lims[0]); line4.SetY1(line4lims[1]); line4.SetX2(line4lims[2]); line4.SetY2(line4lims[3])
+      line4.Draw()
+      
+      pad1.cd()
+      line1_2.SetLineColor(colours[0])
+      line1_2.SetX1(line1lims_2[0]); line1_2.SetY1(line1lims_2[1]); line1_2.SetX2(line1lims_2[2]); line1_2.SetY2(line1lims_2[3])
+      line1_2.Draw()
+      line2_2.SetLineColor(colours[0])
+      line2_2.SetX1(line2lims_2[0]); line2_2.SetY1(line2lims_2[1]); line2_2.SetX2(line2lims_2[2]); line2_2.SetY2(line2lims_2[3])
+      line2_2.Draw()
+      pad2.cd()
+      line3_2.SetLineColor(colours[0])
+      line3_2.SetX1(line3lims_2[0]); line3_2.SetY1(line3lims_2[1]); line3_2.SetX2(line3lims_2[2]); line3_2.SetY2(line3lims_2[3])
+      line3_2.Draw()
+      line4_2.SetLineColor(colours[0])
+      line4_2.SetX1(line4lims_2[0]); line4_2.SetY1(line4lims_2[1]); line4_2.SetX2(line4lims_2[2]); line4_2.SetY2(line4lims_2[3])
+      line4_2.Draw()
+
+    if doWindowLimits :
+      windowHLowEdge=0
+      windowHHighEdge=0
+      for i in range(dataHist.GetNbinsX()) :
+        locationOfTallEdge = dataHist.GetBinLowEdge(i)
+        height = dataHist.GetBinContent(i)
+        if locationOfTallEdge == windowLow :
+          heightLowEdge = dataHist.GetBinContent(i)
+        if locationOfTallEdge == windowHigh:
+          heightHighEdge = dataHist.GetBinContent(i-1)
+
+      windowlowYVal = significance.GetMinimum()#-0.2
+      windowhighYVal = significance.GetMaximum()#+0.2
+
+      line5lims = [windowLow,minYvalue,windowLow,heightLowEdge]
+      line6lims = [windowHigh,minYvalue,windowHigh,heightHighEdge]
+      line7lims = [windowLow,lowYVal,windowLow,highYVal]
+      line8lims = [windowHigh,lowYVal,windowHigh,highYVal]
+
+      # Draw green dashed lines
+      pad1.cd()
+      line5.SetLineColor(ROOT.kTeal-1)
+      line5.SetLineStyle(7)
+      line5.SetX1(line5lims[0]); line5.SetY1(line5lims[1]); line5.SetX2(line5lims[2]); line5.SetY2(line5lims[3])
+      line5.Draw()
+      line6.SetLineColor(ROOT.kTeal-1)
+      line6.SetLineStyle(7)
+      line6.SetX1(line6lims[0]); line6.SetY1(line6lims[1]); line6.SetX2(line6lims[2]); line6.SetY2(line6lims[3])
+      line6.Draw()
+      pad2.cd()
+      line7.SetLineColor(ROOT.kTeal-1)
+      line7.SetLineStyle(7)
+      line7.SetX1(line7lims[0]); line7.SetY1(line7lims[1]); line7.SetX2(line7lims[2]); line7.SetY2(line7lims[3])
+      line7.Draw()
+      line8.SetLineColor(ROOT.kTeal-1)
+      line8.SetLineStyle(7)
+      line8.SetX1(line8lims[0]); line8.SetY1(line8lims[1]); line8.SetX2(line8lims[2]); line8.SetY2(line8lims[3])
+      line8.Draw()
+
+    c.Update()
+    outpad.cd()
+
+    # ATLAS labels and lines near them
+    persistent = []
+    persistent.append(self.drawCME(atlasLabelXLocation,atlasLabelYLocation - 0.045,CME,0.04))
+    self.drawATLASLabels(atlasLabelXLocation, atlasLabelYLocation, isRectangular = True)
+    self.myLatex.SetTextFont(42)
+    self.myLatex.SetTextSize(0.04)
+    index = 0
+    if len(extraLegendLines) > 0 :
+      for line in extraLegendLines :
+        toplocation = atlasLabelYLocation - (widthOfRow)*(index+1) - 0.045
+        persistent.append(self.myLatex.DrawLatex(atlasLabelXLocation,toplocation,line))
+        index = index+1
+
+    # Legends with appropriate dimensions
+    bottomOfLegend1 = 0.415
+    topOfLegend2 = 0.95
+    depthOfLegend = min(0.04*(2+(2 if (fancinessOption!=1 and fancinessOption!=2) else 0)),0.1)+0.05 # data, fit, any signal
+    depthOfLegend = depthOfLegend + 0.05*(float(doWindowLimits)) # window and bump limits
+    if (datastring1 or datastring2) : depthOfLegend = depthOfLegend + 0.04
+    topOfLegend1 = bottomOfLegend1 + depthOfLegend
+    bottomOfLegend2 = topOfLegend2 - depthOfLegend
+    legend = self.makeLegend(leftOfLegend1,bottomOfLegend1,0.4,topOfLegend1,fontSize = 0.04*0.93)
+    legend2 = self.makeLegend(0.56,bottomOfLegend2,0.84,topOfLegend2,fontSize = 0.04*0.93)
+
+    c.Update()
+
+    # Create legends
+
+    # For various blank lines:
+    helperHist = dataHist.Clone()
+    helperHist.SetMarkerColor(0)
+    helperHist.SetLineColor(0)    
+
+    thisline = "Data, {0} fb^{1}".format(lumInFb1,"{-1}")    
+    if datastring1 :
+      thisline = thisline+","
+    legend.AddEntry(dataHist,thisline,"LFP")
+    if datastring1 :
+      legend.AddEntry(helperHist,datastring1,"LFP")
+
+    legend.AddEntry(fitHist,"Background fit","LF")
+
+    thisline2 = "Data, {0} fb^{1}".format(lumInFb2,"{-1}")
+    if datastring2 :
+      thisline2 = thisline2+","
+    legend2.AddEntry(dataHist2,thisline2,"LFP")
+    if datastring2 :
+      legend2.AddEntry(helperHist,datastring2,"LFP")
+
+    legend2.AddEntry(fitHist2,"Background fit","LF")
+
+    if doBumpLimits :
+      legend.AddEntry(line4,"BumpHunter interval","L")
+      legend2.AddEntry(line4_2,"BumpHunter interval","L")
+    if doWindowLimits :
+      legend.AddEntry(line8,"Excluded window","L")
+    if fancinessOption == 0 or fancinessOption == 3 :
+      legend.AddEntry(signal1,"Z', #sigma x {0}".format(scale1))
+      legend2.AddEntry(signal2,"Z', #sigma x {0}".format(scale2))
+      legend.AddEntry(helperHist,"m_{Z'} = 250 GeV, g_{q} = 0.1","LFP")
+      legend2.AddEntry(helperHist,"m_{Z'} = 550 GeV, g_{q} = 0.1","LFP")
+    legend.Draw()
+    legend2.Draw()
+    c.Update()
+
+    # Adding p-values to plot:
+    # want them adjascent to legends
+    if self.dodrawUsersText:
+      #if doBumpLimits:
+      self.drawUsersTextLeftAligned(leftOfLegend1,topOfLegend1+0.02,["","","BH #it{p}-value = "+str(round(pval,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval,2))],0.033)
+      self.drawUsersTextRightAligned(0.68,bottomOfLegend2-0.08,["","","BH #it{p}-value = "+str(round(pval2,2)), "#chi^{2} #it{p}-value = "+str(round(chi2pval2,2))],0.033)
+
+    # Save.
+    pad1.RedrawAxis()
+    pad2.RedrawAxis()
+    pad3.RedrawAxis()
+
+    # Draw x axis labels that aren't a mess    
+    self.fixTheBloodyLabels(pad2,significance.GetBinLowEdge(lowbin),significance.GetBinLowEdge(highbin+1),fontSize=0.17,nLabels=nLabelsX)
+    
+    c.RedrawAxis()
+    c.Update()
+    c.SaveAs(outputname)
+    if saveCfile:
+      c.SaveSource(Coutputname)
+    if saveRfile:
+      c.SaveSource(Routputname)
+    if saveEfile:
+      c.SaveAs(Eoutputname)
+      c.SaveAs(EPSoutputname)
 
 
   def compareDataToLimit(self,dataHist,fitHist,significance,observedLimit,x,datay,sigy,name,luminosity,CME,firstBin=-1,lastBin=-1,doBumpLimits=False,bumpLow=0,bumpHigh=0,extraLegendLines=[],doLogX=True,doRectangular=False,setYRange=[],writeOnpval = False, pval = -999) :
@@ -1723,24 +2162,9 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
-    # Dimensions: xlow, ylow, xup, yup
-    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
-    pad1 = ROOT.TPad("pad1","pad1",0,0.27,1,1) # For main histo
-    pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.27) # For residuals histo
-
-    # Set up to draw in right orientations
-    outpad.SetFillStyle(4000) #transparent
-    pad1.SetBottomMargin(0.00001)
-    pad1.SetBorderMode(0)
-    pad1.SetLogy(1)
+    outpad,pad1,pad2 = self.setStandardTwoPads()
     pad1.SetLogx(doLogX)
-    pad2.SetTopMargin(0.00001)
-    pad2.SetBottomMargin(0.3)
-    pad2.SetBorderMode(0)
     pad2.SetLogx(doLogX)
-    pad1.Draw()
-    pad2.Draw()
-    outpad.Draw()
 
     # Draw data and fit histograms
     pad1.cd()
@@ -1884,25 +2308,9 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
-    # Dimensions: xlow, ylow, xup, yup
-    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
-    pad1 = ROOT.TPad("pad1","pad1",0,0.33,1,1) # For main histo
-    pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.33) # For residuals histo
-
-    # Set up to draw in right orientations
-    outpad.SetFillStyle(4000) #transparent
-    pad1.SetBottomMargin(0.00001)
-    pad1.SetBorderMode(0)
-    pad1.SetLogy(1)
+    outpad,pad1,pad2 = self.setStandardTwoPads()
     pad1.SetLogx(doLogX)
-    pad2.SetTopMargin(0.00001)
-    pad2.SetBottomMargin(0.3)
-    pad2.SetBorderMode(0)
-    pad2.SetLogy(0)
     pad2.SetLogx(doLogX)
-    pad1.Draw()
-    pad2.Draw()
-    outpad.Draw()
 
     # Draw data and fit histograms
     pad1.cd()
@@ -2090,39 +2498,6 @@ class Morisot(object) :
     c.SetGridx(0)
     c.SetGridy(0)
 
-    #padsize = 0.13
-    #topOfSubplots = 0.1 + padsize * 2
-    #for ipad in range(3) :
-    #  padname = "pad_{0}".format(ipad)
-    #  if ipad == 0 :
-    #    print "Main"
-    #    print topOfSubplots
-    #  elif ipad!= 2 :
-    #    print "Middle"
-    #    print topOfSubplots - ipad*padsize
-    #    print topOfSubplots - (ipad-1)*padsize
-    #  else :
-    #    print "Bottom"
-    #    print topOfSubplots - (ipad-1)*padsize
-
-    # Set up to draw in right orientations
-    #outpad.SetFillStyle(4000) #transparent
-    #for pad in pads :
-    #  pad.SetBorderMode(0)
-    #  pad.SetLogx(doLogX)
-    #  if pads.index(pad)==0 :
-    #    pad.SetBottomMargin(0.00001)
-    #    pad.SetLogy(1)
-    #    if (notLogY) :
-    #      pad.SetLogy(0)
-    #  elif pads.index(pad)==len(pads)-1 :
-    #    pad.SetTopMargin(0.00001)
-    #    pad.SetBottomMargin(0.1/(0.1+padsize))
-    #  else :
-    #    pad.SetTopMargin(0.00001)
-    #    pad.SetBottomMargin(0.00001)
-    #  pad.Draw()
-    #outpad.Draw()
     outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
     pad1 = ROOT.TPad("pad1","pad1",0,0.36,1,1) # For main histo
     pad2 = ROOT.TPad("pad2","pad2",0,0.23,1,0.36) # For residuals histo
@@ -2181,7 +2556,7 @@ class Morisot(object) :
     self.drawSignalOverlaidOnDataAndFit(dataHist,fitHist,signalsForSpec,signalmasses,[],luminosity,CME,datay,"",firstBin,lastBin,doLogX,True,False,False,3)
 
     # Lydia adding observedStat value to plot
-    if dodrawUsersText:
+    if self.dodrawUsersText:
       if writeOnFit:
         if writeOnpval:
           if doBumpLimits:
@@ -2439,7 +2814,7 @@ class Morisot(object) :
       self.drawSignalOverlaidOnDataAndFit(dataHist,fitHist,signalsForSpec,signalmasses,[],luminosity,CME,datay,"",firstBin,lastBin,doLogX,True,False,False,3)
 
     # Lydia adding observedStat value to plot
-    if dodrawUsersText:
+    if self.dodrawUsersText:
       if writeOnFit:
         if writeOnpval:
           if doBumpLimits:
@@ -2953,7 +3328,7 @@ class Morisot(object) :
       self.drawCMEAndLumi(0.5,0.825,CME,lumInFb,0.04)
 
     # Lydia adding analysis cuts values to plot
-    if dodrawUsersText and doCanvas:
+    if self.dodrawUsersText and doCanvas:
       self.drawUsersText(0.585,0.775,self.cutstring,0.04)
 
     if doCanvas :
@@ -3030,8 +3405,6 @@ class Morisot(object) :
       maxY = observed.GetMaximum()*1000
     else :
       maxY = ymax
-
-    print "minX, maxX are:",minX,maxX
 
     # Set axis names.
     # So far, should always be thus so don't pass as parameters.
@@ -3210,7 +3583,7 @@ class Morisot(object) :
       self.drawCMEAndLumi(0.5,0.825,CME,lumInFb,0.04)
 
     # Lydia adding analysis cuts values to plot
-    if dodrawUsersText and doCanvas:
+    if self.dodrawUsersText and doCanvas:
       self.drawUsersText(0.585,0.775,self.cutstring,0.04)
 
     if doCanvas :
@@ -3379,7 +3752,7 @@ class Morisot(object) :
     #self.drawLumiAndCMEVert(0.11,0.78,lumInFb,CME,0.032)
     p1 = self.drawCME(0.10,0.86,CME,0.032)
     p2 = self.drawLumi(0.105,0.82,lumInFb,0.032)
-    if dodrawUsersText :
+    if self.dodrawUsersText :
       self.drawUsersText(0.1,0.78,self.cutstring,0.032)
     c.Update()
 
@@ -3700,6 +4073,54 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
+  def draw2DHist(self,hist,name,xAxisName,xlow,xhigh,yAxisName,ylow,yhigh,zAxisName,luminosity=-1,CME=-1,doRectangular=False,makeCanvas=True) :
+
+    canvasname = name+'_cv'
+    outputname = name+epsorpdf
+    if saveCfile:
+      Coutputname = name+'.C'
+    if saveRfile:
+      Routputname = name+'.root'
+    if saveEfile:
+      Eoutputname = name+'.eps'
+    c = self.makeCanvas(canvasname,doRectangular,1.2)
+    c.SetLogx(0)
+    c.SetLogy(0)
+    c.SetGridx(0)
+    c.SetGridy(0)
+
+    c.SetRightMargin(0.2)
+
+    hist.Draw("colz")
+    #hist.GetZaxis().SetRangeUser(0,4)
+    hist.GetZaxis().SetTitle(zAxisName)
+    hist.GetZaxis().SetTitleOffset(1.40)
+    hist.GetXaxis().SetRangeUser(xlow,xhigh)
+    hist.GetXaxis().SetTitleOffset(1.40)
+    hist.GetYaxis().SetRangeUser(ylow,yhigh)
+    hist.GetYaxis().SetTitle(yAxisName)
+    hist.GetXaxis().SetTitle(xAxisName)
+    hist.GetYaxis().SetTitleOffset(1.50)
+    hist.GetYaxis().SetLabelSize(0.05)
+    hist.GetYaxis().SetNdivisions(705, ROOT.kTRUE)
+
+    lumInFb = round(float(luminosity)/float(1000),nsigfigs)
+    self.drawATLASLabels(0.17,0.88,False,True,0.05)
+
+    if CME > 0 :
+      p1 = self.drawCME(0.165,0.81,CME,0.05)
+    if lumInFb > 0 :
+      p2 = self.drawLumi(0.17,0.74,lumInFb,0.05)
+
+    c.Update()
+    c.SaveAs(outputname)
+    if saveCfile:
+      c.SaveSource(Coutputname)
+    if saveRfile:
+      c.SaveSource(Routputname)
+    if saveEfile:
+      c.SaveAs(Eoutputname)
+
   def draw2DLimit(self,hist,name,xAxisName,xlow,xhigh,yAxisName,ylow,yhigh,zAxisName,luminosity=-1,CME=-1,doRectangular=False) :
 
     canvasname = name+'_cv'
@@ -3734,12 +4155,10 @@ class Morisot(object) :
     lumInFb = round(float(luminosity)/float(1000),nsigfigs)
     self.drawATLASLabels(0.17,0.88,False,True,0.05)
     #self.drawCMEAndLumi(0.08,0.82,CME,lumInFb,0.04)
-    #if dodrawUsersText :
-    #  self.drawUsersText(0.165,0.74,"|y*| < 0.6",0.04)
 
     p1 = self.drawCME(0.165,0.81,CME,0.05)
     p2 = self.drawLumi(0.17,0.74,lumInFb,0.05)
-    if dodrawUsersText :
+    if self.dodrawUsersText :
       self.drawUsersText(0.165,0.695,self.cutstring,0.039)
 
     c.Update()
@@ -3992,7 +4411,6 @@ class Morisot(object) :
     if printCanvas :
       bkgPlot.GetYaxis().SetRangeUser(minval - 0.1,maxval+0.1)
     elif FixY :
-      print "val is", bkgPlot.GetBinContent(bkgPlot.GetMinimumBin())
       if bkgPlot.GetBinContent(bkgPlot.GetMinimumBin()) >= -1.0 :
         bkgPlot.GetYaxis().SetRangeUser(-1.3,3.7)
       else :
@@ -4368,7 +4786,7 @@ class Morisot(object) :
 #      persistent.append(self.drawLumi(leftOfAll,topOfAll-0.02-widthOfRow,lumInFb,0.04))
       persistent.append(self.drawCMEAndLumi(leftOfAll-0.08,topOfAll,CME,lumInFb,0.04))
 
-    if dodrawUsersText :
+    if self.dodrawUsersText :
       if not cutLocation == "Left" :
         self.drawUsersText(leftOfAll+0.01,topOfAll-0.05,self.cutstring,0.04)
       else :
@@ -4914,21 +5332,29 @@ class Morisot(object) :
     dataHist.GetYaxis().SetTitle(yname)
     dataHist.GetXaxis().SetRange(firstBin,lastBin)
     dataHist.SetMarkerSize(0.75) # Lydia EOYE, was 1.2 before!
+    
+    actualMin = 1E10
+    actualMax = 0
+    for bin in range(firstBin,lastBin+1) :
+      if dataHist.GetBinContent(bin) > actualMax : actualMax = dataHist.GetBinContent(bin)
+      elif dataHist.GetBinContent(bin) < actualMin : actualMin = dataHist.GetBinContent(bin)
+    
     if not LeaveAxisAlone :
       if not ROOT.gPad.GetLogy() :
         y1  = 0
-        y2 = dataHist.GetBinContent(dataHist.GetMaximumBin())*1.2
+        y2 = actualMax*1.2
       else :
-        y1 = 0.3
-        y2 = dataHist.GetBinContent(dataHist.GetMaximumBin())*5
+        y1 = max(0.3, actualMin/5.0)
+        y2 = actualMax*5.0
       if FixYAxis :
-        y1 = 0.5
+        y1 = max(0.5, actualMin/5.0)
         y2 = dataHist.GetBinContent(firstBin)*5
       # moving
       if extraRoom :
         y2 = y2 * 3
       dataHist.GetYaxis().SetRangeUser(y1,y2)
     else :
+      # Get max and min within the available bins.
       y1 = dataHist.GetMinimum()
       y2 = dataHist.GetMaximum()
 
@@ -5048,15 +5474,56 @@ class Morisot(object) :
 
     return persistent
 
+  def setStandardTwoPads(self) :
+  
+    # Dimensions: xlow, ylow, xup, yup
+    outpad = ROOT.TPad("extpad","extpad",0,0,1,1) # For marking outermost dimensions
+    pad1 = ROOT.TPad("pad1","pad1",0,0.27,1,1) # For main histo
+    pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.27) # For residuals histo
+
+    # Set up to draw in right orientations
+    outpad.SetFillStyle(4000) #transparent
+    pad1.SetBottomMargin(0.00001)
+    pad1.SetBorderMode(0)
+    pad1.SetLogy(1)
+    pad2.SetTopMargin(0.00001)
+    pad2.SetBottomMargin(0.35) # 0.3
+    pad2.SetBorderMode(0)
+    pad1.Draw()
+    pad2.Draw()
+    outpad.Draw()
+    return outpad,pad1,pad2
+
   def drawSignificanceHist(self,significance,firstBin,lastBin,xname,yname,fixYAxis=False,\
-        inLargerPlot=False,doLogX=False,doErrors=False,fillColour = ROOT.kRed) :
-    significance.SetLineColor(ROOT.kBlack)
-    significance.SetLineWidth(2)
-    significance.SetFillColor(fillColour)
-    significance.SetFillStyle(1001)
-    significance.SetTitle("")
+        inLargerPlot=False,doLogX=False,doErrors=False,fillColour = ROOT.kRed, drawAsLine=False, drawSame=False, yRange=[]) :
+
+    if drawAsLine :
+      significance.SetLineColor(fillColour)
+      significance.SetFillStyle(0)
+      # For "draw as line" we also want a simple dotted line at 0
+      # which should be at the back.
+      if not drawSame :
+        line = ROOT.TLine(significance.GetBinLowEdge(firstBin), 0.0, significance.GetBinLowEdge(lastBin), 0.0)
+        line.SetLineColor(ROOT.kBlack)
+        line.SetLineStyle(2)
+        line.Draw("SAME")
+    else :
+      significance.SetLineColor(ROOT.kBlack)
+      significance.SetLineWidth(2)
+      significance.SetFillColor(fillColour)
+      significance.SetFillStyle(1001)
+
+    significance.GetXaxis().SetTitle(xname)
+    
+    significance.GetYaxis().SetTitleSize(0.12) # 0.1
+    significance.GetYaxis().SetTitleOffset(0.45) # 0.42
+    significance.GetYaxis().SetLabelSize(0.1) # 0.1
+    significance.GetXaxis().SetLabelSize(0.1) # 0.1
+    significance.GetXaxis().SetTitleSize(0.12) # 0.1
+    significance.GetXaxis().SetTitleOffset(1.3) # 1.2
+
     significance.GetXaxis().SetRange(firstBin,lastBin)
-    lowPoint = significance.GetMaximum()
+    lowPoint = significance.GetMaximum(significance.GetMaximumBin())
     highPoint = significance.GetMinimum()
     ylow = 0.0
     yhigh = 0.0
@@ -5076,26 +5543,41 @@ class Morisot(object) :
         ylow = lowPoint - 0.9*(highPoint - lowPoint)
         yhigh = highPoint + 0.9*(highPoint - lowPoint)
     else :
-      if abs(significance.GetMaximum()) < 1.5 :
-        ylow = -1.7
-        yhigh = 1.7
+      if yRange :
+        ylow = yRange[0]
+        yhigh = yRange[1]
       else :
-        ylow = -3.7
-        yhigh = 3.7
+        if abs(significance.GetMaximum()) < 1.5 :
+          ylow = -1.7
+          yhigh = 1.7
+        else :
+          ylow = -3.7
+          yhigh = 3.7
     significance.GetYaxis().SetRangeUser(ylow,yhigh)
     if inLargerPlot :
       significance.GetYaxis().SetTickLength(0.055)
+    else :
+      significance.GetYaxis().SetTickLength(0.035)
+    significance.GetXaxis().SetTickLength(0.08)
     significance.GetXaxis().SetNdivisions(805,ROOT.kTRUE)
+    significance.GetYaxis().SetNdivisions(805,ROOT.kTRUE)
 
     significance.GetYaxis().SetTitle(yname)
     significance.GetXaxis().SetTitle(xname)
+    drawOption = ""
     if doErrors :
-      significance.Draw("E")
+      drawOption = "E"
     else :
-      significance.Draw("HIST")
+      if drawAsLine :
+        drawOption = "L"
+      else :
+        drawOption = "HIST"
+    if drawSame :
+      drawOption = drawOption + " SAME"
+    significance.Draw(drawOption)
 
     self.fixTheBloodyTickMarks(ROOT.gPad, significance, significance.GetBinLowEdge(firstBin), significance.GetBinLowEdge(lastBin+1),ylow,yhigh)
-
+    
   def drawSignificanceHistWithJESBands(self,significance,upsignificance,downsignificance,firstBin,lastBin,xname,yname,fixYAxis=False,\
         inLargerPlot=False,doLogX=False,doErrors=False) :
     #significance.SetMarkerColor(ROOT.kBlack)
@@ -5109,9 +5591,6 @@ class Morisot(object) :
     significance.GetYaxis().SetRangeUser(ylow,yhigh)
     upsignificance.GetYaxis().SetRangeUser(ylow,yhigh)
     downsignificance.GetYaxis().SetRangeUser(ylow,yhigh)
-    #significance.GetYaxis().SetNdivisions(5,10,0)
-    #upsignificance.GetYaxis().SetNdivisions(5,10,0)
-    #downsignificance.GetYaxis().SetNdivisions(5,10,0)
     significance.GetYaxis().SetNdivisions(604)
     upsignificance.GetYaxis().SetNdivisions(604)
     downsignificance.GetYaxis().SetNdivisions(604)
@@ -5158,33 +5637,14 @@ class Morisot(object) :
   def drawATLASLabels(self,xstart,ystart,rightalign=False,isRectangular=False,fontSize=0.05) :
     if self.labeltype < 0 :
       return
+    # If we have set "rightalign" = true, we will take the x location as the right side of the label.
     self.myLatex.SetTextSize(fontSize)
-    self.myLatex.SetTextFont(72)
-    # Defined with respect to "preliminary"
-    extralength = {0:0, 1: 0, 2: -0.07, 3: 0.25, 4: 0.23, 5: -0.1, 6 : 0.12}
+    string = "#font[72]{0} #font[42]{1}".format("{ATLAS}","{"+self.labelDict[self.labeltype]+"}")
+    self.myLatex.SetTextAlign(11)
     if rightalign :
-      xstart = xstart - extralength[self.labeltype]
-    self.myLatex.DrawLatex(xstart, ystart, "ATLAS")
-    if self.labeltype==0 :
-      return
-    spacing = 0.17*(fontSize/0.05)
-    if (isRectangular) :
-      #spacing = 0.12*(fontSize/0.05)
-      spacing = 0.14*(fontSize/0.05)
-    self.myLatex.SetTextFont(42)
-    if self.labeltype==1 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Preliminary")
-    elif self.labeltype==2 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Internal")
-    elif self.labeltype==3 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation Preliminary")
-    elif self.labeltype==4 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation Internal")
-    elif self.labeltype==5 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Simulation")
-    elif self.labeltype==6 :
-      self.myLatex.DrawLatex(xstart + spacing, ystart, "Work in Progress")
-    return
+      self.myLatex.SetTextAlign(31)
+    self.myLatex.DrawLatex(xstart, ystart, string)
+    self.myLatex.SetTextAlign(11)
 
   # Text height required is around 0.04 for size 0.04, 0.05 for size 0.05, etc
 
@@ -5199,7 +5659,6 @@ class Morisot(object) :
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
     mypb = "pb^{-1}"
-    #self.whitebox.AddText(0.04,1.0/8.0,"{0} = {1} {2}".format(mystring,lumiInFb,myfb))
     if doLumiInPb:
       self.whitebox.AddText(0.04,1.0/8.0,"{0} {1}".format(int(lumiInFb*1000),mypb))
     else:
@@ -5207,17 +5666,18 @@ class Morisot(object) :
     persistent = self.whitebox.DrawClone()
     return persistent
 
-  def drawCME(self,xstart,ystart,CME,fontsize=0.05) :
-    self.whitebox.Clear()
-    self.whitebox.SetTextSize(fontsize)
-    self.whitebox.SetX1NDC(xstart-0.01)
-    self.whitebox.SetY1NDC(ystart-0.01)
-    self.whitebox.SetX2NDC(xstart+0.25)
-    self.whitebox.SetY2NDC(ystart+0.05)
+  def drawCME(self,xstart,ystart,CME,fontsize=0.05,rightalign=False) :
     mysqrt = "#sqrt{s}"
-    self.whitebox.AddText(0.04,1.0/6.0,"{0}={1} TeV".format(mysqrt,CME))
-    persistent = self.whitebox.DrawClone()
-    return persistent
+    persistent = ROOT.TLatex()
+    persistent.SetTextColor(ROOT.kBlack)
+    persistent.SetNDC()
+    persistent.SetTextSize(fontsize)
+    string = "{0}={1} TeV".format(mysqrt,CME)
+    if rightalign :
+      persistent.SetTextAlign(31)
+    persistent.DrawLatex(xstart, ystart, string)
+    persistent.SetTextAlign(11)
+    return 1
 
   def drawLumiAndCMEVert(self,xstart,ystart,lumiInFb,CME,fontsize=0.05) :
     if lumiInFb < 0 and CME < 0 :
@@ -5238,7 +5698,6 @@ class Morisot(object) :
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
     mypb = "pb^{-1}"
-#    inputstring1 = "{0} = {1} {2}".format(mystring,lumiInFb,myfb)
     if doLumiInPb:
       inputstring1 = "{0} {1}".format(int(lumiInFb*1000),mypb)
     else:
@@ -5254,15 +5713,7 @@ class Morisot(object) :
   def drawCMEAndLumi(self,xstart,ystart,CME,lumiInFb,fontsize=0.05) :
     if lumiInFb < 0 and CME < 0 :
       return
-    # Readjust x location after removing integral and lumi sign
-    xstart = xstart + 0.08
-    '''self.whitebox.Clear()
-    self.whitebox.SetFillStyle(3000) # make box transparent
-    self.whitebox.SetTextSize(fontsize)
-    self.whitebox.SetX1NDC(xstart-0.01)
-    self.whitebox.SetY1NDC(ystart-0.01)
-    self.whitebox.SetX2NDC(xstart+0.32) # was 0.4 before
-    self.whitebox.SetY2NDC(ystart+0.05)'''
+
     mysqrt = "#sqrt{s}"
     mystring = "#scale[0.7]{#int}L dt"
     myfb = "fb^{-1}"
@@ -5270,15 +5721,11 @@ class Morisot(object) :
 
     if doLumiInPb:
       mytext = "{0}={1} TeV, {2} {3}".format(mysqrt,CME,int(lumiInFb*1000),mypb)
-      #self.whitebox.AddText(0.04,1.0/8.0,"{0}={1} TeV, {2} {3}".format(mysqrt,CME,int(lumiInFb*1000),mypb))
     else:
-      #lumitext = ''
       if isinstance(lumiInFb, (list,tuple)):
         lumitext = '-'.join(["{0}".format(l) for l in lumiInFb])
       else: lumitext = lumiInFb
       mytext = "{0}={1} TeV, {2} {3}".format(mysqrt,CME,lumitext,myfb)
-      #self.whitebox.AddText(0.04,1.0/8.0,"{0}={1} TeV, {2} {3}".format(mysqrt,CME,lumiInFb,myfb))
-    #self.whitebox.Draw()
     newtext = ROOT.TLatex()
     newtext.SetNDC()
     newtext.SetTextSize(fontsize)
@@ -5302,6 +5749,56 @@ class Morisot(object) :
     newtext.SetTextAlign(11)
     newtext.DrawLatex(xstart,ystart,"{0}".format(text)) 
     return
+  
+  def drawUsersTextLeftAligned(self,xstart,ystart,text,fontsize=0.06) :
+    self.newwhitebox = ROOT.TPaveText()
+    self.newwhitebox.SetFillColor(0)
+    #self.newwhitebox.SetFillStyle(1001)
+    self.newwhitebox.SetFillStyle(3000) # make box transparent
+    self.newwhitebox.SetTextColor(ROOT.kBlack)
+    self.newwhitebox.SetTextFont(42)
+    self.newwhitebox.SetTextAlign(12)
+    self.newwhitebox.SetBorderSize(0)
+
+    self.newwhitebox.SetTextSize(fontsize)
+    self.newwhitebox.SetX1NDC(xstart-0.01)
+    self.newwhitebox.SetY1NDC(ystart-0.01)
+    self.newwhitebox.SetX2NDC(xstart+0.25)
+    self.newwhitebox.SetY2NDC(ystart+0.15)
+    for textitem in text:
+      self.newwhitebox.AddText("{0}".format(textitem))
+    self.newwhitebox.Draw()
+    return
+
+  def drawUsersTextRightAligned(self,xstart,ystart,text,fontsize=0.06) :
+    self.newwhitebox2 = ROOT.TPaveText()
+    self.newwhitebox2.SetFillColor(0)
+    #self.newwhitebox.SetFillStyle(1001)
+    self.newwhitebox2.SetFillStyle(3000) # make box transparent
+    self.newwhitebox2.SetTextColor(ROOT.kBlack)
+    self.newwhitebox2.SetTextFont(42)
+    self.newwhitebox2.SetTextAlign(32)
+    self.newwhitebox2.SetBorderSize(0)
+
+    self.newwhitebox2.SetTextSize(fontsize)
+    self.newwhitebox2.SetX1NDC(xstart-0.01)
+    self.newwhitebox2.SetY1NDC(ystart-0.01)
+    self.newwhitebox2.SetX2NDC(xstart+0.25)
+    self.newwhitebox2.SetY2NDC(ystart+0.15)
+    for textitem in text:
+      self.newwhitebox2.AddText("{0}".format(textitem))
+    self.newwhitebox2.Draw()
+    return
+
+  def flatten_list(self,list) :
+    flat_list = []
+    for item in list:
+      if isinstance(item,Iterable) :
+        for subitem in item:
+          flat_list.append(subitem)
+      else :
+        flat_list.append(item)
+    return flat_list
 
   def calculateIntersectionOfGraphs(self, graph1, graph2, doLogGraph1=False, doLogGraph2=False) :
 
@@ -5386,14 +5883,14 @@ class Morisot(object) :
       lny = math.log(thisY1) + m*(x-thisX1)
     return math.exp(lny)
 
-  def fixTheBloodyTickMarks(self, pad, hist, x1, x2, y1, y2) :
+  def fixTheBloodyTickMarks(self, pad, hist, x1, x2, y1, y2, override = False) :
 
     if not pad.GetLogx() :
       return
 
     hist.GetXaxis().SetMoreLogLabels()
 
-    if x2/x1 > 100 or x2/x1 < 10:
+    if (x2/x1 > 100 or x2/x1 < 10) and not override :
       return
 
     tick = ROOT.TLine()
@@ -5437,6 +5934,8 @@ class Morisot(object) :
       startRange = xlow
       stopRange = xup
 
+    print startRange,stopRange
+
     for i in xrange(startRange, stopRange, 100) :
       if TeVScale :
         xx = float(i)/1000
@@ -5459,3 +5958,121 @@ class Morisot(object) :
           tick.DrawLine(xx, tickmaxy - (2*length if i%1000 == 0 else length), xx, tickmaxy)
 
     ROOT.gPad.Update()
+
+  def fixTheBloodyLabels(self,pad,x1,x2,fontSize=0.04,nLabels=7,overrideY=0) :
+
+    if not pad.GetLogx() :
+      return
+
+    # First point to mark will be first above x1
+    firstTick = self.roundUpOrderOfMagnitude(x1)
+
+    # Last will be last below x2
+    lastTick = self.roundDownOrderOfMagnitude(x2)
+
+    # Set of possible labels are spaced by order of magnitude.
+    possibleLabels = []
+    val = firstTick
+    for order in range(self.magnitude(firstTick),self.magnitude(lastTick)+1) :
+      order_list = []
+      for integer in range(1,10) :
+        possibleVal = integer * pow(10,order)
+        if possibleVal >= firstTick and possibleVal <= lastTick :
+          order_list.append(possibleVal)
+      possibleLabels.append(order_list)
+
+    # Optimal number of labels is about 7, unless otherwise specified.
+    # Take them off the top end of the lowest order of magnitude
+    # until there are more left at the next order up, then go there.
+    while self.countNestedList(possibleLabels) > nLabels :
+      for order in range(len(possibleLabels)-1) :
+        if len(possibleLabels[order]) > len(possibleLabels[order+1]) :
+          possibleLabels[order].pop()
+        else :
+          possibleLabels[order+1].pop()
+
+    finalLabels = [item for sublist in possibleLabels for item in sublist]
+    
+    # Now decide where to put them and draw them on.
+    labelmaker = ROOT.TLatex()
+    labelmaker.SetTextColor(ROOT.kBlack)
+    labelmaker.SetTextFont(42)
+    labelmaker.SetTextSize(fontSize)
+    labelmaker.SetTextAlign(22)
+    
+    ymin = pad.GetUymin()
+    ymax = pad.GetUymax()
+    
+    # If it's a log y axis, we need to go to a place
+    # which probably doesn't exist in user coordinates for this.
+    # We have to switch to pad coordinates, but also keep the
+    # x locations.
+    if pad.GetLogy() :
+      
+      ylocation = 0.7*pad.GetBottomMargin()
+      if overrideY :
+        ylocation = overrideY
+
+      # The following then sets the label text to turn it into [0,1] coordinates.
+      labelmaker.SetNDC()
+      # And overwrite the x locations.
+      for label in finalLabels :
+        xndc = self.convertXUserToNDC(pad,label,x1,x2)
+        labeltext = "{0}".format(label)
+        # Center horizontally and vertically around specified location
+        labelmaker.DrawLatex(xndc,ylocation,labeltext)
+
+    else :
+
+      ylocation = ymin - abs(float(ymax) - float(ymin))/6.0
+      if overrideY :
+        ylocation = overrideY
+    
+      for label in finalLabels :
+        labeltext = "{0}".format(label)
+        # Center horizontally and vertically around specified location
+        labelmaker.DrawLatex(label,ylocation,labeltext)
+
+  def magnitude (self,value):
+    value = float(value)
+    if (value == 0): return 0
+    return int(math.floor(math.log10(abs(value))))
+
+  def roundUpOrderOfMagnitude(self, value) :
+    value = float(value)
+    magnitude = self.magnitude(value)
+    xhigh = int(math.ceil(value/pow(10,magnitude)))*pow(10,magnitude)
+    return xhigh
+
+  def roundDownOrderOfMagnitude(self,value) :
+    value = float(value)
+    magnitude = self.magnitude(value)
+    xlow = int(math.floor(value/pow(10,magnitude)))*pow(10,magnitude)
+    return xlow
+
+  def countNestedList(self,testlist) :
+    length = 0
+    for item in testlist :
+      if isinstance(item,list)  :
+        length = length+self.countNestedList(item)
+      else :
+        length = length+1
+    return length
+
+  def convertXUserToNDC(self,pad,val,minAxis,maxAxis) :
+
+    pad.Update() #this is necessary!
+
+    xpLeft = pad.GetLeftMargin()
+    xpRight = pad.GetRightMargin()
+
+    if pad.GetLogx() :
+      xPercentageAxis = (math.log(float(val))-math.log(minAxis))/(math.log(maxAxis)-math.log(minAxis))
+    else :
+      xPercentageAxis = (float(val)-minAxis)/(maxAxis-minAxis)
+
+    # Left margin + right margin + axis = 1.0
+    axisWidth = 1.0-xpLeft-xpRight
+    xndc = xpLeft + xPercentageAxis*axisWidth
+    return xndc
+
