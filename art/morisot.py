@@ -1060,7 +1060,7 @@ class Morisot(object) :
       histogram.SetLineWidth(2)
       histogram.SetFillStyle(0)
       histogram.SetTitle("")
-      histogram.GetXaxis().SetRange(minX,maxX)#+5)
+      histogram.GetXaxis().SetRangeUser(minX,maxX)#+5)
       histogram.GetYaxis().SetRangeUser(minY,maxY)
       histogram.GetYaxis().SetTitleSize(0.06)
       histogram.GetYaxis().SetTitleOffset(1.3) # 1.2
@@ -1068,7 +1068,10 @@ class Morisot(object) :
       
       histogram.GetXaxis().SetTitleSize(0.06)
       histogram.GetXaxis().SetTitleOffset(1.2)
-      histogram.GetXaxis().SetLabelSize(0.06)
+      if (doLogX) :
+        histogram.GetXaxis().SetLabelSize(0)
+      else :
+        histogram.GetXaxis().SetLabelSize(0.06)
       histogram.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
       
       # Try to tidy up ugly y axes
@@ -1090,9 +1093,11 @@ class Morisot(object) :
           histogram.Draw("E SAME")
       if doLogX :
         if doLegendOutsidePlot :
-          self.fixTheBloodyTickMarks(pad1, histogram,histogram.GetBinLowEdge(minX),histogram.GetBinLowEdge(maxX+6),minY,maxY)
+          self.fixTheBloodyTickMarks(pad1, histogram,minX,maxX,minY,maxY)
+          self.fixTheBloodyLabels(pad1,minX,maxX,fontSize=0.06,nLabels=7,overrideY=0.15,suppressFirstOrder=True)
         else :
-          self.fixTheBloodyTickMarks(ROOT.gPad,histogram, histogram.GetBinLowEdge(minX),histogram.GetBinLowEdge(maxX+6),minY,maxY)
+          self.fixTheBloodyTickMarks(ROOT.gPad,histogram, minX,maxX,minY,maxY)
+          self.fixTheBloodyLabels(ROOT.gPad,minX,maxX,fontSize=0.06,nLabels=7,overrideY=0.15,suppressFirstOrder=True)
 
     if (doLegend) :
 
@@ -4215,6 +4220,118 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
+  def drawSignalGrid(self,grids,name,gridnames,xAxisName,xmin,xmax,yAxisName,ymin,ymax,doRectangular=True,addDiagonal=True) :
+
+    canvasname = name+'_cv'
+    outputname = name+epsorpdf
+    if saveCfile:
+      Coutputname = name+'.C'
+    if saveRfile:
+      Routputname = name+'.root'
+    if saveEfile:
+      Eoutputname = name+'.eps'
+    c = self.makeCanvas(canvasname,doRectangular)
+    c.SetLogx(0)
+    c.SetLogy(0)
+    c.SetGridx(0)
+    c.SetGridy(0)
+
+    # Set automatic axis range from graphs.
+    # X axis range will be +/- 10% of range
+    xVals = []
+    yVals = []
+    for grid in grids :
+      for i in range(grid.GetN()) :
+        xVals.append(grid.GetX()[i])
+        yVals.append(grid.GetY()[i])
+    xVals.sort()
+    yVals.sort()
+    if xmin == 'automatic':
+      minX = xVals[0]- 0.5*(xVals[0]-xVals[1])
+    else :
+      minX = xmin
+    if xmax == 'automatic':
+      maxX = xVals[-1] + 0.5*(xVals[-1]-xVals[-2])
+    else :
+      maxX = xmax   
+    if ymin == 'automatic' :
+      minY = yVals[0] - 0.5*(yVals[0]-yVals[1])
+    else :
+      minY = ymin
+    if ymax == 'automatic' :
+      maxY = yVals[-1] + 2*(yVals[-1]-yVals[-2])
+    else :
+      maxY = ymax
+
+    # Should be safe since top left is above kinematic limit
+    leftOfLegend = 0.2
+    topOfLegend = 0.9
+    bottomOfLegend = topOfLegend - 0.05*(len(grids))
+    legend = self.makeLegend(leftOfLegend,bottomOfLegend,0.5,topOfLegend) # 0.88
+
+    goodcolours = self.getGoodColours(len(grids))
+    drawn = False
+    for grid in grids :
+
+      if grid.GetN() < 1 :
+        continue
+      
+      index = grids.index(grid)
+
+      # Format 
+      if index > 0 :
+        grid.SetMarkerStyle(25+index)
+      else :
+        grid.SetMarkerStyle(20)
+      grid.SetLineColor(goodcolours[index])
+      grid.SetLineWidth(3)
+      grid.SetMarkerColor(goodcolours[index])
+      grid.SetMarkerSize(1.5)
+
+      grid.GetXaxis().SetRangeUser(minX,maxX)
+      grid.GetYaxis().SetRangeUser(minY,maxY)
+
+      grid.GetXaxis().SetTitle(xAxisName)
+      grid.GetYaxis().SetTitle(yAxisName)
+
+      grid.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
+
+      legend.AddEntry(grid,gridnames[index],"P")
+
+      # Draw option
+      if not drawn :
+        option = "APX"
+        drawn = True        
+      else :
+        option = "PX SAME"
+
+      print "Drawing",gridnames[index],"with option",option
+      grid.Draw(option)
+
+    legend.Draw()
+
+    # Add diagonal line if requested
+    if addDiagonal :
+      startline = minX
+      if maxX < maxY :
+        endline = maxX
+      else :
+        endline = maxY
+      line = ROOT.TLine(startline,startline,endline,endline)
+      line.SetLineColor(ROOT.kBlack)
+      line.SetLineStyle(2)
+      line.Draw("SAME")     
+
+    c.RedrawAxis()
+    c.Update()
+    c.SaveAs(outputname)
+    if saveCfile:
+      c.SaveSource(Coutputname)
+    if saveRfile:
+      c.SaveSource(Routputname)
+    if saveEfile:
+      c.SaveAs(Eoutputname)
+
   def drawSeveralObservedAndExpected(self,observeds,expecteds1sigma,expecteds2sigma,legendnames,name,nameX,nameY,luminosity,CME,xmin,xmax,ymin,ymax,doRectangular=False) :
 
     canvasname = name+'_cv'
@@ -4788,7 +4905,7 @@ class Morisot(object) :
 
     if self.dodrawUsersText :
       if not cutLocation == "Left" :
-        self.drawUsersText(leftOfAll+0.01,topOfAll-0.05,self.cutstring,0.04)
+        self.drawUsersText(leftOfAll+0.01,topOfAll,self.cutstring,0.04)
       else :
         self.drawUsersText(0.20,topOfAll,self.cutstring,0.04)
 
@@ -5959,7 +6076,7 @@ class Morisot(object) :
 
     ROOT.gPad.Update()
 
-  def fixTheBloodyLabels(self,pad,x1,x2,fontSize=0.04,nLabels=7,overrideY=0) :
+  def fixTheBloodyLabels(self,pad,x1,x2,fontSize=0.04,nLabels=7,overrideY=0,suppressFirstOrder=False) :
 
     if not pad.GetLogx() :
       return
@@ -5980,6 +6097,9 @@ class Morisot(object) :
         if possibleVal >= firstTick and possibleVal <= lastTick :
           order_list.append(possibleVal)
       possibleLabels.append(order_list)
+
+    if suppressFirstOrder :
+      possibleLabels[0] = [possibleLabels[0][0]]
 
     # Optimal number of labels is about 7, unless otherwise specified.
     # Take them off the top end of the lowest order of magnitude
