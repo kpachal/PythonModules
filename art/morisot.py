@@ -4220,7 +4220,7 @@ class Morisot(object) :
     if saveEfile:
       c.SaveAs(Eoutputname)
 
-  def drawSignalGrid(self,grids,name,gridnames,xAxisName,xmin,xmax,yAxisName,ymin,ymax,doRectangular=True,addDiagonal=True) :
+  def drawSignalGrid(self,grids,name,gridnames,xAxisName,xmin,xmax,yAxisName,ymin,ymax,extraLegendLines=[],doRectangular=True,addDiagonal=True) :
 
     canvasname = name+'_cv'
     outputname = name+epsorpdf
@@ -4244,22 +4244,26 @@ class Morisot(object) :
       for i in range(grid.GetN()) :
         xVals.append(grid.GetX()[i])
         yVals.append(grid.GetY()[i])
-    xVals.sort()
-    yVals.sort()
+    xVals = sorted(list(set(xVals)))
+    yVals = sorted(list(set(yVals)))
     if xmin == 'automatic':
-      minX = xVals[0]- 0.5*(xVals[0]-xVals[1])
+      if len(xVals) > 1 : minX = xVals[0] - 0.5*(xVals[1]-xVals[0])
+      else: minX = minX - 0.2*xVals[0]
     else :
       minX = xmin
     if xmax == 'automatic':
-      maxX = xVals[-1] + 0.5*(xVals[-1]-xVals[-2])
+      if len(xVals) > 1 : maxX = xVals[-1] + 0.5*(xVals[-1]-xVals[-2])
+      else : maxX = 1.2*xVals[-1]
     else :
       maxX = xmax   
     if ymin == 'automatic' :
-      minY = yVals[0] - 0.5*(yVals[0]-yVals[1])
+      if len(yVals) > 1 : minY = yVals[0] - 0.5*(yVals[1]-yVals[0])
+      else : minY = 0.8*yVals[0]
     else :
       minY = ymin
     if ymax == 'automatic' :
-      maxY = yVals[-1] + 2*(yVals[-1]-yVals[-2])
+      if len(yVals) > 1 : maxY = yVals[-1] + 2*(yVals[-1]-yVals[-2])
+      else : maxY = 1.2*yVals[-1]
     else :
       maxY = ymax
 
@@ -4288,7 +4292,7 @@ class Morisot(object) :
       grid.SetMarkerColor(goodcolours[index])
       grid.SetMarkerSize(1.5)
 
-      grid.GetXaxis().SetRangeUser(minX,maxX)
+      grid.GetXaxis().SetLimits(minX,maxX)
       grid.GetYaxis().SetRangeUser(minY,maxY)
 
       grid.GetXaxis().SetTitle(xAxisName)
@@ -4305,7 +4309,6 @@ class Morisot(object) :
       else :
         option = "PX SAME"
 
-      print "Drawing",gridnames[index],"with option",option
       grid.Draw(option)
 
     legend.Draw()
