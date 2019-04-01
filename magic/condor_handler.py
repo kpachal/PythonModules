@@ -53,6 +53,7 @@ class CondorHandler(object) :
       fsubcondor.write('Output          = {0}/stdout_{1}.txt\n'.format(self.log_path,tag))
       fsubcondor.write('Error           = {0}/stderr_{1}.txt\n'.format(self.log_path,tag))
       fsubcondor.write('log             = {0}/batch_{1}.log\n'.format(self.log_path,tag))
+      fsubcondor.write('requirements    = (OpSysAndVer =?= "CentOS7")\n')
       fsubcondor.write('\nqueue 1\n')
 
     print ("Made job file",batchFile)
