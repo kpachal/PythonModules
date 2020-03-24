@@ -1,5 +1,10 @@
 import ROOT
 
+def GetKeyNames( self, dir = "" ):
+  self.cd(dir)
+  return [[key.GetName(),key.GetClassName()] for key in ROOT.gDirectory.GetListOfKeys()]
+ROOT.TFile.GetKeyNames = GetKeyNames
+
 def GetZVal (p, excess) :
   #the function normal_quantile converts a p-value into a significance,
   #i.e. the number of standard deviations corresponding to the right-tail of 
