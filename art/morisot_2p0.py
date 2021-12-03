@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+
 #import sys
 import ROOT
 import AtlasStyle
 import math
 from array import array
-from colourPalette import ColourPalette
+print("About to try import")
+from art.colourPalette import ColourPalette
+print("Succeeded")
 
 class Morisot_2p0(object) :
 
@@ -13,7 +17,7 @@ class Morisot_2p0(object) :
   def __init__(self) :
 
     # Set up style
-    AtlasStyle.SetAtlasStyle()
+    ROOT.SetAtlasStyle()
     ROOT.gROOT.ForceStyle()
 
     # Alternate output formats if requested
