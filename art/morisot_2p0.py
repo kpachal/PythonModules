@@ -5,9 +5,7 @@ import ROOT
 import AtlasStyle
 import math
 from array import array
-print("About to try import")
 from art.colourPalette import ColourPalette
-print("Succeeded")
 
 class Morisot_2p0(object) :
 
@@ -29,8 +27,11 @@ class Morisot_2p0(object) :
     self.colourpalette = ColourPalette()
     self.colourpalette.setColourPalette("Tropical")
 
+    # Experiment
+    self.experiment = "DarkLight"
+
     # Set one of these
-    self.labeltype = 2 # ATLAS Internal
+    self.labeltype = 2 # Internal
 
     # 1 "Preliminary"
     # 2 "Internal"
@@ -209,6 +210,29 @@ class Morisot_2p0(object) :
       y2 = y2 * 3
 
     return y1, y2
+    
+  def pickNiceXLimits(self,listOfHists,dominantHist=None,userX=None,userY=None,useTrueEdges=False) :
+    minXLoose = 1e10; minXTrue = 1e10
+    maxXLoose = -1e10; maxXTrue = -1e10
+    if dominantHist :
+      minXLoose, maxXLoose, minXTrue, maxXTrue = self.getAxisRangesFromHist(dominantHist)
+    else :
+      for hist in listOfHists :
+        xl, xh, xlt, xht = self.getAxisRangesFromHist(hist)
+        if xl < minXLoose : minXLoose = xl
+        if xh > maxXLoose : maxXLoose = xh
+        if xlt < minXTrue : minXTrue = xlt
+        if xht > maxXTrue : maxXTrue = xht
+    # Now all are at their most extreme values.
+    # Will use the "adjusted" min and max unless requested otherwise
+    if useTrueEdges :
+      xl = xlt
+      xh = xht
+    # And overwrite with user values if either of them is real
+    if userX :
+      xl = userX
+      xh = userY
+    return xl, xh
 
   def createRatio(self,hist_num,histlist_denom) :
     # Error is just bin error of hist 1 divided by hist 2
@@ -250,37 +274,41 @@ class Morisot_2p0(object) :
 
     return hist
 
-  def drawATLASLabel(self,xval,yval,rightalign=False,isRectangular=False,fontSize=0.05) :
+  def drawLabel(self,xval,yval,rightalign=False,isRectangular=False,fontSize=0.05) :
     if self.labeltype < 0 :
       return
+      
+    # Size and alignment
     self.myLatex.SetTextSize(fontSize)
-    self.myLatex.SetTextFont(72)
     if rightalign :
       self.myLatex.SetTextAlign(31)
     else :
       self.myLatex.SetTextAlign(11)
-    self.myLatex.DrawLatex(xval, yval, "ATLAS")
-
-    if self.labeltype==0 :
-      return
-    spacing = 0.17*(fontSize/0.05)
-    if (isRectangular) :
-      spacing = 0.14*(fontSize/0.05)
-
+      
+    # Styling by experiment
     self.myLatex.SetTextFont(42)
+    phrase = ""
+    if self.experiment == "ATLAS" :
+      phrase += "#font[72]{ATLAS}"
+    else :
+      phrase += self.experiment
+
+    # In case 0, just continue.
     if self.labeltype==1 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Preliminary")
+      phrase += " Preliminary"
     elif self.labeltype==2 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Internal")
+      phrase += " Internal"
     elif self.labeltype==3 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Simulation Preliminary")
+      phrase += " Simulation Preliminary"
     elif self.labeltype==4 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Simulation Internal")
+      phrase += " Simulation Internal"
     elif self.labeltype==5 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Simulation")
+      phrase += " Simulation"
     elif self.labeltype==6 :
-      self.myLatex.DrawLatex(xval + spacing, yval, "Work in Progress")
-    return    
+      phrase += " Work in Progress"
+    self.myLatex.DrawLatex(xval, yval, phrase)
+
+    return
 
   def drawCMEAndLumi(self,xval,yval,CME,lumiInFb,fontSize=0.05) :
     if lumiInFb < 0 and CME < 0 :
@@ -359,17 +387,16 @@ class Morisot_2p0(object) :
 
     # Set up labels and titles
     histo.SetTitle("")
-    histo.GetYaxis().SetRangeUser()
     histo.GetYaxis().SetTitleSize(0.06)
     histo.GetYaxis().SetTitleOffset(1.3) # 1.2
     histo.GetYaxis().SetLabelSize(0.06)
       
-    histogram.GetXaxis().SetTitleSize(0.06)
-    histogram.GetXaxis().SetTitleOffset(1.2)
-    if (doLogX) :
-      histogram.GetXaxis().SetLabelSize(0)
-    else :
-      histogram.GetXaxis().SetLabelSize(0.06)
+    histo.GetXaxis().SetTitleSize(0.06)
+    histo.GetXaxis().SetTitleOffset(1.2)
+    #if (doLogX) :
+    #  histo.GetXaxis().SetLabelSize(0)
+    #else :
+    histo.GetXaxis().SetLabelSize(0.06)
 
     # Axis ranges and divisions
     histo.GetXaxis().SetRangeUser(xlow,xhigh)   
@@ -399,7 +426,7 @@ class Morisot_2p0(object) :
   ### Primary functions
 
 
-  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,luminosity=None,CME=13,nLegendColumns=1,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None) :
+  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,luminosity=None,CME=13,nLegendColumns=1,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None,useTrueEdges=False) :
 
     # Make a canvas
     outpad,pad1,pad2 = None,None,None
@@ -408,15 +435,19 @@ class Morisot_2p0(object) :
     # Make a legend
     legendDepth = 0.04*len(histos_list)/float(nLegendColumns) + 0.04*(histos_list is not None)
     legendTop = 0.90 if not doRatio else 0.95
-    legend = self.makeLegend(0.5,legendTop-legendDepth,0.92,legendTop,nColumns=nLegendColumns,fontSize = 0.04)
+    legend = self.makeLegend(0.55,legendTop-legendDepth,0.92,legendTop,nColumns=nLegendColumns,fontSize = 0.04)
 
     if doRatio :
       outpad,pad1,pad2 = self.setStandardTwoPads(logx,logy)
       pad1.cd()
 
+    # Use data if available, else use histo max/mins
+    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh,useTrueEdges)
+
+    # Fill legend
     if data :
-      xlow, xhigh, actualMin, actualMax = self.getAxisRangesFromHist(data)
       legend.AddEntry(data,data_label,"LP")
+    for histo, histo_label in zip(histos_list,histos_labels) : legend.AddEntry(histo, histo_label, "L")
 
     # Get colours
     goodcolours = self.getLineColours(len(histos_list))
@@ -425,13 +456,27 @@ class Morisot_2p0(object) :
     for histogram in histos_list :
       index = histos_list.index(histogram)
       if index == 0 :
-        self.drawBackgroundHist()
+        self.drawBackgroundHist(histogram, goodcolours[index], xl,xh,xlabel,ylabel,same=False,doErrors=False,nPads=(2 if doRatio else 1),LeaveAxisAlone=False,extraRoom=False)
       else :
-        self.drawBackgroundHist()
+        self.drawBackgroundHist(histogram, goodcolours[index], xl,xh,xlabel,ylabel,same=True,doErrors=False,nPads=(2 if doRatio else 1),LeaveAxisAlone=False,extraRoom=False)
 
     # Draw data, if there is data
     if data : self.drawDataHist(data,xlow,xhigh,xlabel,ylabel,same=True,nPads=1,extraRoom=False)
 
+    c.Update()
+
+    legend.Draw()
+
+    # Finally, add some labels
+    self.drawLabel(0.55,legendTop,fontSize=0.04)
+    if luminosity :
+      self.drawCMEAndLumi(0.2,0.85,CME,luminosity,fontSize=0.035)
+    if extraLines :
+      for line in extraLines :
+        text = self.drawText(0.2,0.80-0.04*extraLines.index(line),line,fontSize=0.035)
+
+    self.saveCanvas(c,plotname)
+    
     return
 
 
@@ -450,9 +495,12 @@ class Morisot_2p0(object) :
       outpad,pad1,pad2 = self.setStandardTwoPads(logx,logy)
       pad1.cd()
 
+    # Select limits
+    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh,useTrueEdges)
+    
+    # Handle data if available
     if data :
-      xlow, xhigh, actualMin, actualMax = self.getAxisRangesFromHist(data)
-      self.drawDataHist(data,xlow,xhigh,xlabel,ylabel,same=False,nPads=1,extraRoom=False)
+      self.drawDataHist(data,xl,xh,xlabel,ylabel,same=False,nPads=1,extraRoom=False)
       legend.AddEntry(data,data_label,"LP")
 
     # Make a stack for items in the stack_list
@@ -495,8 +543,7 @@ class Morisot_2p0(object) :
       stack.SetMaximum(stack.GetMaximum()*5.0 if logy else stack.GetMaximum()*1.4)
       stack.SetMinimum(0.5 if logy else 0)
       # A sensible stack should have the biggest contribution (i.e. longest tails) on top
-      mc_xlow, mc_xhigh, false_ymin, false_ymax = self.getAxisRangesFromHist(stack_list[-1])
-      stack.GetXaxis().SetRangeUser(mc_xlow,mc_xhigh)      
+      stack.GetXaxis().SetRangeUser(xl,xh)
       stack.GetXaxis().SetTitle(xlabel)
       stack.GetYaxis().SetTitle(ylabel)
       c.Update()
@@ -505,7 +552,7 @@ class Morisot_2p0(object) :
     else :
       stack.Draw("SAME")
       # Put the data hist on top
-      self.drawDataHist(data,xlow,xhigh,xlabel,ylabel,same=True,nPads=1,extraRoom=False)
+      self.drawDataHist(data,xl,xh,xlabel,ylabel,same=True,nPads=1,extraRoom=False)
 
     # Add signals if requested
     if signal_list :
@@ -533,7 +580,7 @@ class Morisot_2p0(object) :
     legend.Draw()
 
     # Finally, add some labels
-    self.drawATLASLabel(0.2,0.9,fontSize=0.04)
+    self.drawLabel(0.2,0.9,fontSize=0.04)
     if luminosity :
       self.drawCMEAndLumi(0.2,0.85,CME,luminosity,fontSize=0.035)
     if extraLines :
@@ -579,9 +626,7 @@ class Morisot_2p0(object) :
       else :
         ymax = yVals[-1]*1.2
 
-    # Create legend.
-    # Currently putting ATLAS label + cut info at top left
-    # and legend at right.
+    # Create legend at right.
     legendDepth = 0.04*len(names_list)
     legendTop = 0.90
     legend = self.makeLegend(0.5,legendTop-legendDepth,0.92,legendTop,nColumns=1,fontSize = 0.03)    
@@ -630,7 +675,7 @@ class Morisot_2p0(object) :
     legend.Draw()
 
     # Finally, add some labels
-    self.drawATLASLabel(0.2,0.85,fontSize=0.04)
+    self.drawLabel(0.2,0.85,fontSize=0.04)
     if luminosity :
       self.drawCMEAndLumi(0.2,0.80,CME,luminosity,fontSize=0.035)
     if extraLines :

@@ -58,14 +58,13 @@ class ColourPalette(object) :
     self.tomographyGraphColour = 2003
 
     # Colours for lists
-    self.shortGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]  
+    self.shortLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]
    
-    self.defaultGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]  
+    self.defaultLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]
 
-    self.mediumGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
+    self.mediumLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
 
-    self.longGoodColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1] #+...
-
+    self.longLineColours = self.mediumLineColours
 
 
   def setATLASColours(self) :
@@ -89,8 +88,8 @@ class ColourPalette(object) :
     self.signalLineColours = [ROOT.kBlue,ROOT.kAzure+7,ROOT.kCyan+3]#ROOT.kTeal+9]
     self.signalErrorColours = [ROOT.kBlue-9,ROOT.kCyan-9,ROOT.kTeal+8]#ROOT.kAzure+6,ROOT.kTeal+8]
 
-    self.shortGoodColours = self.mediumGoodColours
-    self.defaultGoodColours = self.mediumGoodColours
+    self.shortLineColours = self.mediumLineColours
+    self.defaultLineColours = self.mediumlineColours
 
   def setOxfordColours(self) :
 
@@ -129,8 +128,8 @@ class ColourPalette(object) :
     self.statisticalTestArrowColour = 2013
     self.tomographyGraphColour = 2013
 
-    self.defaultGoodColours = [2010,2011,2012,2013,2014]
-    self.shortGoodColours = [2012,2011,2013]
+    self.defaultLineColours = [2010,2011,2012,2013,2014]
+    self.shortLineColours = [2012,2011,2013]
 
   def setTropicalColours(self) :
 
@@ -164,20 +163,16 @@ class ColourPalette(object) :
     self.tomographyGraphColour = 2003
 
     # Colours for lists
-    #self.shortGoodColours = [2001,2002,2003]
-    self.shortGoodColours = [ROOT.kViolet+6,ROOT.kSpring-5,ROOT.kPink-1]
-    #self.defaultGoodColours = [2001,2000,2002,2003,2004] # Red fourth
-    self.defaultGoodColours = [ROOT.kViolet+6,ROOT.kAzure+1,ROOT.kSpring-5,ROOT.kPink-1,ROOT.kRed]
-#    self.defaultGoodColours = [1001,1000,1002,1004,1003]
-    self.mediumGoodColours = [ROOT.kCyan+4,ROOT.kCyan+2,ROOT.kCyan,\
+    self.shortLineColours = [ROOT.kViolet+6,ROOT.kSpring-5,ROOT.kPink-1]
+    self.defaultLineColours = [ROOT.kViolet+6,ROOT.kAzure+1,ROOT.kSpring-5,ROOT.kPink-1,ROOT.kRed]
+    self.mediumLineColours = [ROOT.kCyan+4,ROOT.kCyan+2,ROOT.kCyan,\
                               ROOT.kBlue,ROOT.kBlue+2,\
                               ROOT.kMagenta+2,ROOT.kMagenta,\
                               ROOT.kRed,ROOT.kRed+2,ROOT.kOrange+10,\
                               ROOT.kOrange,ROOT.kYellow]
-    self.longGoodColours = [ROOT.kCyan+4,ROOT.kCyan+3,ROOT.kCyan+2,ROOT.kCyan+1,ROOT.kCyan,\
+    self.longLineColours = [ROOT.kCyan+4,ROOT.kCyan+3,ROOT.kCyan+2,ROOT.kCyan+1,ROOT.kCyan,\
                      ROOT.kBlue,ROOT.kBlue+1,ROOT.kBlue+2,ROOT.kBlue+3,ROOT.kBlue+4,\
                      ROOT.kMagenta+4,ROOT.kMagenta+3,ROOT.kMagenta+2,ROOT.kMagenta+1,ROOT.kMagenta,\
                      ROOT.kRed,ROOT.kRed+1,ROOT.kRed+2,ROOT.kOrange+9,ROOT.kOrange+10,\
                      ROOT.kOrange+7,ROOT.kOrange,ROOT.kYellow,ROOT.kGreen-4,ROOT.kGreen-1,ROOT.kGreen+2,ROOT.kTeal]
-#    self.longGoodColours = [ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,ROOT.kRed,\
-#                        ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue,ROOT.kBlue]
+
