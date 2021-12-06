@@ -59,14 +59,17 @@ class ColourPalette(object) :
 
     # Colours for lists
     self.shortLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]
-   
     self.defaultLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]
-
     self.mediumLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
-
     self.longLineColours = self.mediumLineColours
 
-
+    # For now, use the same colours for fills, but code separately
+    # to leave option for making lighter ones in future
+    self.shortFillColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1]
+    self.defaultFillColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]
+    self.mediumFillColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
+    self.longFillColours = self.mediumFillColours
+    
   def setATLASColours(self) :
 
     # Plot fill colours

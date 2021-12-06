@@ -29,6 +29,10 @@ class Morisot_2p0(object) :
 
     # Experiment
     self.experiment = "DarkLight"
+    self.luminosity = 160
+    self.luminosityUnits = "fb^{-1}"
+    self.CME = 13
+    self.CMEUnits = "TeV"
 
     # Set one of these
     self.labeltype = 2 # Internal
@@ -180,7 +184,7 @@ class Morisot_2p0(object) :
       elif hist.GetBinContent(bin) < actualMin and hist.GetBinContent(bin) != 0 : 
         actualMin = hist.GetBinContent(bin)  
 
-    return hist.GetBinLowEdge(firstBin), hist.GetBinLowEdge(lastBin)+hist.GetBinWidth(lastBin), actualMin, actualMax
+    return hist.GetBinLowEdge(firstBin), hist.GetBinLowEdge(lastBin)+hist.GetBinWidth(lastBin), hist.GetBinLowEdge(firstBin), hist.GetBinLowEdge(lastBin), actualMin, actualMax
 
   def getAxisRangesFromGraph(self,graph) :
 
@@ -211,14 +215,14 @@ class Morisot_2p0(object) :
 
     return y1, y2
     
-  def pickNiceXLimits(self,listOfHists,dominantHist=None,userX=None,userY=None,useTrueEdges=False) :
+  def pickNiceXLimits(self,listOfHists,dominantHist=None,userXL=None,userXH=None,useTrueEdges=False) :
     minXLoose = 1e10; minXTrue = 1e10
     maxXLoose = -1e10; maxXTrue = -1e10
     if dominantHist :
-      minXLoose, maxXLoose, minXTrue, maxXTrue = self.getAxisRangesFromHist(dominantHist)
+      minXLoose, maxXLoose, minXTrue, maxXTrue, minY, maxY = self.getAxisRangesFromHist(dominantHist)
     else :
       for hist in listOfHists :
-        xl, xh, xlt, xht = self.getAxisRangesFromHist(hist)
+        xl, xh, xlt, xht, yl, yh = self.getAxisRangesFromHist(hist)
         if xl < minXLoose : minXLoose = xl
         if xh > maxXLoose : maxXLoose = xh
         if xlt < minXTrue : minXTrue = xlt
@@ -229,9 +233,11 @@ class Morisot_2p0(object) :
       xl = xlt
       xh = xht
     # And overwrite with user values if either of them is real
-    if userX :
-      xl = userX
-      xh = userY
+    if userXL is not None :
+      xl = userXL
+    if userXH is not None :
+      xh = userXH
+
     return xl, xh
 
   def createRatio(self,hist_num,histlist_denom) :
@@ -310,18 +316,46 @@ class Morisot_2p0(object) :
 
     return
 
-  def drawCMEAndLumi(self,xval,yval,CME,lumiInFb,fontSize=0.05) :
-    if lumiInFb < 0 and CME < 0 :
+  def drawCME(self,xstart,ystart,fontsize=0.05,rightalign=False) :
+    if self.CME < 0 :
+      return
+      
+    mysqrt = "#sqrt{s}"
+    text = ROOT.TLatex()
+    text.SetTextColor(ROOT.kBlack)
+    text.SetNDC()
+    text.SetTextSize(fontsize)
+    mystring = "{0}={1} {1}".format(mysqrt,self.CME,self.CMEUnits)
+    if rightalign :
+      persistent.SetTextAlign(31)
+    text.DrawLatex(xstart, ystart, string)
+    text.SetTextAlign(11)
+    return text
+    
+  def drawLumi(self,xstart,ystart,fontsize=0.05) :
+    if self.luminosity < 0 :
+      return
+      
+    text = ROOT.TLatex()
+    text.SetTextColor(ROOT.kBlack)
+    text.SetNDC()
+    text.SetTextSize(fontsize)
+    mystring = "#scale[0.5]{0}L dt = {1} {2}".format("{#int}",self.luminosity,self.luminosityUnits)
+    text.DrawLatex(xstart, ystart, mystring)
+    return text
+    
+  def drawCMEAndLumi(self,xval,yval,fontSize=0.05) :
+    if self.luminosity < 0 or self.CME < 0 :
       return
 
     mysqrt = "#sqrt{s}"
     myfb = "fb^{-1}"
 
-    if isinstance(lumiInFb, (list,tuple)):
-      lumitext = '-'.join(["{0}".format(l) for l in lumiInFb])
+    if isinstance(self.luminosity, (list,tuple)):
+      lumitext = '-'.join(["{0}".format(l) for l in self.luminosity])
     else: 
-      lumitext = lumiInFb
-      mytext = "{0}={1} TeV, {2} {3}".format(mysqrt,CME,lumitext,myfb)
+      lumitext = self.luminosity
+      mytext = "{0}={1} {2}, {3} {4}".format(mysqrt,self.CME,self.CMEUnits,lumitext,self.luminosityUnits)
 
     newtext = ROOT.TLatex()
     newtext.SetNDC()
@@ -358,9 +392,9 @@ class Morisot_2p0(object) :
     dataHist.GetXaxis().SetRangeUser(xlow,xhigh)
     dataHist.SetMarkerSize(1.0) # was 0.75 in dijet ISR
 
-    xmin_auto, xmax_auto, actualMin, actualMax = self.getAxisRangesFromHist(dataHist)
+    xmin_auto, xmax_auto, actualMin, actualMax, ymin_auto, ymax_auto = self.getAxisRangesFromHist(dataHist)
     
-    y1, y2 = self.pickNiceYLimits(actualMin, actualMax, extraRoom)
+    y1, y2 = self.pickNiceYLimits(ymin_auto, ymax_auto, extraRoom)
     if not LeaveAxisAlone :
       dataHist.GetYaxis().SetRangeUser(y1,y2)
 
@@ -399,7 +433,7 @@ class Morisot_2p0(object) :
     histo.GetXaxis().SetLabelSize(0.06)
 
     # Axis ranges and divisions
-    histo.GetXaxis().SetRangeUser(xlow,xhigh)   
+    histo.GetXaxis().SetRangeUser(xlow,xhigh)
     histo.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
     histo.GetYaxis().SetNdivisions(605,ROOT.kTRUE)
       
@@ -426,7 +460,7 @@ class Morisot_2p0(object) :
   ### Primary functions
 
 
-  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,luminosity=None,CME=13,nLegendColumns=1,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None,useTrueEdges=False) :
+  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=1,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None,useTrueEdges=False) :
 
     # Make a canvas
     outpad,pad1,pad2 = None,None,None
@@ -442,7 +476,7 @@ class Morisot_2p0(object) :
       pad1.cd()
 
     # Use data if available, else use histo max/mins
-    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh,useTrueEdges)
+    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh)
 
     # Fill legend
     if data :
@@ -461,7 +495,7 @@ class Morisot_2p0(object) :
         self.drawBackgroundHist(histogram, goodcolours[index], xl,xh,xlabel,ylabel,same=True,doErrors=False,nPads=(2 if doRatio else 1),LeaveAxisAlone=False,extraRoom=False)
 
     # Draw data, if there is data
-    if data : self.drawDataHist(data,xlow,xhigh,xlabel,ylabel,same=True,nPads=1,extraRoom=False)
+    if data : self.drawDataHist(data,xl,xh,xlabel,ylabel,same=True,nPads=1,extraRoom=False)
 
     c.Update()
 
@@ -469,8 +503,7 @@ class Morisot_2p0(object) :
 
     # Finally, add some labels
     self.drawLabel(0.55,legendTop,fontSize=0.04)
-    if luminosity :
-      self.drawCMEAndLumi(0.2,0.85,CME,luminosity,fontSize=0.035)
+    self.drawCMEAndLumi(0.2,0.85,fontSize=0.035)
     if extraLines :
       for line in extraLines :
         text = self.drawText(0.2,0.80-0.04*extraLines.index(line),line,fontSize=0.035)
@@ -480,7 +513,7 @@ class Morisot_2p0(object) :
     return
 
 
-  def drawStackedHistos(self,stack_list,data=None,signal_list=None,stack_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,luminosity=None,CME=13,nLegendColumns=2,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None) :
+  def drawStackedHistos(self,stack_list,data=None,signal_list=None,stack_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=2,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None) :
 
     # Make a canvas
     outpad,pad1,pad2 = None,None,None
@@ -496,7 +529,7 @@ class Morisot_2p0(object) :
       pad1.cd()
 
     # Select limits
-    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh,useTrueEdges)
+    xl, xh = self.pickNiceXLimits(stack_list,data,xLow,xHigh)
     
     # Handle data if available
     if data :
@@ -581,15 +614,14 @@ class Morisot_2p0(object) :
 
     # Finally, add some labels
     self.drawLabel(0.2,0.9,fontSize=0.04)
-    if luminosity :
-      self.drawCMEAndLumi(0.2,0.85,CME,luminosity,fontSize=0.035)
+    self.drawCMEAndLumi(0.2,0.85,fontSize=0.035)
     if extraLines :
       for line in extraLines :
         text = self.drawText(0.2,0.80-0.04*extraLines.index(line),line,fontSize=0.035)      
 
     self.saveCanvas(c,plotname)
 
-  def drawOverlaidTGraphs(self,graphs_list,names_list,xlabel="",ylabel="",plotname="",logx=False,logy=True,luminosity=None,CME=13,xmin=None,xmax=None,ymin=None,ymax=None,addHorizontalLines=[],extraLines=[]) :
+  def drawOverlaidTGraphs(self,graphs_list,names_list,xlabel="",ylabel="",plotname="",logx=False,logy=True,xmin=None,xmax=None,ymin=None,ymax=None,addHorizontalLines=[],extraLines=[]) :
 
     c = self.makeCanvas(plotname,logx,logy)    
 
@@ -676,10 +708,36 @@ class Morisot_2p0(object) :
 
     # Finally, add some labels
     self.drawLabel(0.2,0.85,fontSize=0.04)
-    if luminosity :
-      self.drawCMEAndLumi(0.2,0.80,CME,luminosity,fontSize=0.035)
+    self.drawCMEAndLumi(0.2,0.80,fontSize=0.035)
     if extraLines :
       for line in extraLines :
         self.drawText(0.2,0.76-0.04*extraLines.index(line),line,fontSize=0.035)
 
     self.saveCanvas(c,plotname) 
+
+  def draw2DHist(self,hist,plotname,xAxisName,xlow,xhigh,yAxisName,ylow,yhigh,zAxisName,logx=False, logy=False, logz=False) :
+
+    c = self.makeCanvas(plotname,logx,logy)
+    c.SetLogz(logz)
+    c.SetRightMargin(0.2)
+    c.SetBottomMargin(c.GetRightMargin()+c.GetLeftMargin()-c.GetTopMargin())
+
+    hist.Draw("colz")
+    hist.GetZaxis().SetTitle(zAxisName)
+    hist.GetZaxis().SetTitleOffset(1.40)
+    hist.GetXaxis().SetRangeUser(xlow,xhigh)
+    hist.GetXaxis().SetTitleOffset(1.40)
+    hist.GetYaxis().SetRangeUser(ylow,yhigh)
+    hist.GetYaxis().SetTitle(yAxisName)
+    hist.GetXaxis().SetTitle(xAxisName)
+    hist.GetYaxis().SetTitleOffset(1.50)
+    hist.GetYaxis().SetLabelSize(0.05)
+    hist.GetYaxis().SetNdivisions(705, ROOT.kTRUE)
+
+    self.drawLabel(0.17,0.88,False,True,0.05)
+
+    p1 = self.drawCME(0.165,0.81,0.05)
+    p2 = self.drawLumi(0.17,0.74,0.05)
+
+    c.Update()
+    self.saveCanvas(c,plotname)
