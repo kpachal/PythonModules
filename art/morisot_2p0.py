@@ -69,6 +69,9 @@ class Morisot_2p0(object) :
     canvas = ROOT.TCanvas(canvasname,'',0,0,dim[0],dim[1])
     canvas.SetLogx(logx)
     canvas.SetLogy(logy)
+    # Set a few helpful margins
+    canvas.SetTopMargin(0.03)
+    canvas.SetRightMargin(0.03)
     return canvas
 
   def saveCanvas(self,canvas,outputname) :
@@ -460,7 +463,7 @@ class Morisot_2p0(object) :
   ### Primary functions
 
 
-  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=1,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None,useTrueEdges=False) :
+  def drawOverlaidHistos(self,histos_list,data=None,signal_list=None,histos_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=1,extraLines=[],xlow=None,xhigh=None,ylow=None,yhigh=None,useTrueEdges=False) :
 
     # Make a canvas
     outpad,pad1,pad2 = None,None,None
@@ -476,7 +479,7 @@ class Morisot_2p0(object) :
       pad1.cd()
 
     # Use data if available, else use histo max/mins
-    xl, xh = self.pickNiceXLimits(histos_list,data,xLow,xHigh)
+    xl, xh = self.pickNiceXLimits(histos_list,data,xlow,xhigh)
 
     # Fill legend
     if data :
@@ -513,7 +516,7 @@ class Morisot_2p0(object) :
     return
 
 
-  def drawStackedHistos(self,stack_list,data=None,signal_list=None,stack_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=2,extraLines=[],xLow=None,xHigh=None,yLow=None,yHigh=None) :
+  def drawStackedHistos(self,stack_list,data=None,signal_list=None,stack_labels=[],data_label="",xlabel="",ylabel="",plotname="",doRatio=False,ratioName="",doBkgErr=False,logx=False,logy=True,nLegendColumns=2,extraLines=[],xlow=None,xhigh=None,ylow=None,yhigh=None) :
 
     # Make a canvas
     outpad,pad1,pad2 = None,None,None
@@ -529,7 +532,7 @@ class Morisot_2p0(object) :
       pad1.cd()
 
     # Select limits
-    xl, xh = self.pickNiceXLimits(stack_list,data,xLow,xHigh)
+    xl, xh = self.pickNiceXLimits(stack_list,data,xlow,xhigh)
     
     # Handle data if available
     if data :
@@ -545,6 +548,7 @@ class Morisot_2p0(object) :
       histogram.SetLineColor(goodcolours[index])
       histogram.SetLineWidth(2)
       histogram.SetFillColor(goodcolours[index])
+      histogram.SetFillStyle(1001)
       if nLegendColumns != 2 :
         legend.AddEntry(histogram,stack_labels[index],"F")
       histogram.SetTitle("")
@@ -572,7 +576,7 @@ class Morisot_2p0(object) :
 
     # Without data, stack sets plot ranges and formats
     if not data :
-      stack.Draw()
+      stack.Draw("F")
       stack.SetMaximum(stack.GetMaximum()*5.0 if logy else stack.GetMaximum()*1.4)
       stack.SetMinimum(0.5 if logy else 0)
       # A sensible stack should have the biggest contribution (i.e. longest tails) on top
@@ -739,5 +743,89 @@ class Morisot_2p0(object) :
     p1 = self.drawCME(0.165,0.81,0.05)
     p2 = self.drawLumi(0.17,0.74,0.05)
 
+    c.Update()
+    self.saveCanvas(c,plotname)
+
+  def drawHistsWithTF1s(self,hist_list,func_list,as_data=False,match_colours=True,hist_labels=[],func_labels=[],xlabel="",ylabel="",plotname="",doRatios=False,ratioName="",doErrors=False,logx=False,logy=True,nLegendColumns=2,extraLines=[],xlow=None,xhigh=None,ylow=None,yhigh=None) :
+
+    # Make a canvas
+    outpad,pad1,pad2 = None,None,None
+    c = self.makeCanvas(plotname,logx,logy)
+
+    # Make a legend
+    legendDepth = 0.04*(2*len(hist_labels))/float(nLegendColumns)
+    legendTop = 0.90 if not doRatios else 0.95
+    legend = self.makeLegend(0.55,legendTop-legendDepth,0.92,legendTop,nColumns=nLegendColumns,fontSize = 0.03)
+
+    if doRatios :
+      outpad,pad1,pad2 = self.setStandardTwoPads(logx,logy)
+      pad1.cd()
+
+    # Select limits
+    xl, xh = self.pickNiceXLimits(hist_list,None,xlow,xhigh)
+    #yl, yh = self.pickNiceYLimits(ylow, yhigh, extraRoom )
+    
+    ## Old below
+
+    goodcolours_single = self.getLineColours(2*len(hist_list))
+    goodcolours_pairs = self.colourpalette.pairedComplementaryColours
+
+    # Plot histograms and functions
+    for histogram,fit in zip(hist_list,func_list) :
+      index = hist_list.index(histogram)
+      if match_colours :
+        pair = goodcolours_pairs[index]
+        hist_colour = pair[0]
+        tf1_colour = pair[1]
+      else :
+        hist_colour = goodcolours_single[2*index]
+        tf1_colour = goodcolours_single[2*index+1]
+      histogram.SetLineColor(hist_colour)
+      histogram.SetMarkerColor(hist_colour)
+      histogram.SetLineStyle(1)
+      histogram.SetLineWidth(2)
+      histogram.SetFillStyle(0)
+      histogram.SetTitle("")
+      histogram.GetXaxis().SetRangeUser(xl,xh)
+      #histogram.GetYaxis().SetRangeUser(minY,maxY)
+      histogram.GetYaxis().SetTitleSize(0.06)
+      histogram.GetYaxis().SetTitleOffset(1.2)
+      histogram.GetYaxis().SetLabelSize(0.06)
+      histogram.GetXaxis().SetTitleSize(0.06)
+      histogram.GetXaxis().SetTitleOffset(1.2)
+      histogram.GetXaxis().SetLabelSize(0.06)
+      histogram.GetXaxis().SetNdivisions(605,ROOT.kTRUE)
+      legend.AddEntry(histogram,hist_labels[index],"L")
+      if (index==0) :
+        histogram.GetXaxis().SetTitle(xlabel)
+        histogram.GetYaxis().SetTitle(ylabel)
+        if not doErrors :
+          histogram.Draw("HIST")
+        else :
+          histogram.Draw("E")
+      else :
+        histogram.GetXaxis().SetTitle("")
+        histogram.GetYaxis().SetTitle("")
+        if not doErrors :
+          histogram.Draw("HIST SAME")
+        else :
+          histogram.Draw("E SAME")
+          
+      fit.SetLineColor(tf1_colour)
+      fit.SetLineStyle(1)
+      fit.SetLineWidth(2)
+      fit.SetFillStyle(0)
+      fit.SetTitle("")
+      fit.Draw("C SAME")
+      legend.AddEntry(fit,func_labels[index],"L")
+      
+      #if doLogX :
+        #self.fixTheBloodyTickMarks(ROOT.gPad,histogram, histogram.GetBinLowEdge(minX),histogram.GetBinLowEdge(maxX+6),minY,maxY)
+
+    # Draw legend & ATLAS label
+    legend.Draw()
+    self.drawLabel(0.2, 0.2,False)
+
+    c.RedrawAxis()
     c.Update()
     self.saveCanvas(c,plotname)

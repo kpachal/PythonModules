@@ -62,6 +62,9 @@ class ColourPalette(object) :
     self.defaultLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]
     self.mediumLineColours = [ROOT.kAzure+5, ROOT.kBlue+2,ROOT.kRed-3,ROOT.kOrange+1,ROOT.kViolet+2]#+...
     self.longLineColours = self.mediumLineColours
+    
+    # Paired colours for matching things
+    self.pairedComplementaryColours = [[ROOT.kAzure+5, ROOT.kBlue+2],[ROOT.kRed-3,ROOT.kOrange+1]]
 
     # For now, use the same colours for fills, but code separately
     # to leave option for making lighter ones in future
